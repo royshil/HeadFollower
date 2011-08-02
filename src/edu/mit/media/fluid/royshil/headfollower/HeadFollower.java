@@ -12,7 +12,6 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.text.method.DateTimeKeyListener;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -40,6 +39,9 @@ import com.opencv.jni.image_pool;
 import com.opencv.opengl.GL2CameraViewer;
 
 import edu.mit.media.fluid.charactertracker.jni.Detector;
+import edu.mit.media.fluid.royshil.graphics.MyAnimations;
+import edu.mit.media.fluid.royshil.graphics.MyAnimations.MyAnim;
+import edu.mit.media.fluid.royshil.graphics.MyCanvasView;
 
 public class HeadFollower extends Activity implements android.view.View.OnClickListener, OnSeekBarChangeListener {
 	private static final String LOG_TAG = "HeadFollower";
@@ -60,79 +62,6 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	private Bundle extras;
 	private MediaPlayer mMediaPlayer;
 	private boolean mIsVideoReadyToBePlayed;
-	
-	enum Animations { 
-		TURN,
-		THREE_QUARTERS_TO_PROFILE,
-		START_WALK,
-		END_WALK,
-		WALK,
-		SHAKE_HAND,
-		WAVE, NATURAL
-	}
-	
-//	private static HashMap<Animations, Integer> blue_animation_index = new HashMap<Animations, Integer>();
-//	private static HashMap<Animations, Integer> red_animation_index = new HashMap<Animations, Integer>();
-//	{
-//		blue_animation_index.put(Animations.TURN,							R.drawable.anim_look_l_to_r);
-//		blue_animation_index.put(Animations.THREE_QUARTERS_TO_PROFILE, 		R.drawable.anim_look_l_to_r);
-//		blue_animation_index.put(Animations.START_WALK, 					R.drawable.anim_look_l_to_r);
-//		blue_animation_index.put(Animations.END_WALK, 						R.drawable.anim_look_l_to_r);
-//		blue_animation_index.put(Animations.WALK, 							R.drawable.anim_look_l_to_r);
-//		blue_animation_index.put(Animations.WAVE, 							R.drawable.anim_look_l_to_r);
-//		blue_animation_index.put(Animations.SHAKE_HAND, 					R.drawable.anim_look_l_to_r);
-//
-//		red_animation_index.put(Animations.TURN,							R.drawable.girlturn);
-////		red_animation_index.put(Animations.THREE_QUARTERS_TO_PROFILE, 		R.drawable.anim_look_l_to_r);
-//		red_animation_index.put(Animations.START_WALK, 						R.drawable.girlstartwalk);
-//		red_animation_index.put(Animations.END_WALK, 						R.drawable.girlendwalk);
-//		red_animation_index.put(Animations.WALK, 							R.drawable.girlwalk);
-//		red_animation_index.put(Animations.WAVE, 							R.drawable.girlwave);
-//		red_animation_index.put(Animations.SHAKE_HAND, 						R.drawable.girlshake);
-//	}
-	private class MyAnim {
-		String filename; 
-		int start;
-		int end;
-		boolean loop;
-		public MyAnim(String filename, int start, int end) {
-			super();
-			this.filename = filename;
-			this.start = start;
-			this.end = end;
-			this.loop = false;
-		}
-		public MyAnim(String filename, int start, int end, boolean loop) {
-			super();
-			this.filename = filename;
-			this.start = start;
-			this.end = end;
-			this.loop = loop;
-		}
-	}
-	
-	private static HashMap<Animations, MyAnim> blue_animation_index = new HashMap<Animations, MyAnim>();
-	private static HashMap<Animations, MyAnim> red_animation_index = new HashMap<Animations, MyAnim>();
-	{
-		blue_animation_index.put(Animations.TURN,							new MyAnim("guy/guy_",329,340));
-//		blue_animation_index.put(Animations.THREE_QUARTERS_TO_PROFILE, 		R.drawable.anim_look_l_to_r);
-		blue_animation_index.put(Animations.START_WALK, 					new MyAnim("guy/guy_",37,57));
-		blue_animation_index.put(Animations.END_WALK, 						new MyAnim("guy/guy_",90,111));
-		blue_animation_index.put(Animations.WALK, 							new MyAnim("guy/guy_",58,89,true));
-		blue_animation_index.put(Animations.WAVE, 							new MyAnim("guy/guy_",113,190));
-		blue_animation_index.put(Animations.SHAKE_HAND, 					new MyAnim("guy/guy_",266,325));
-		blue_animation_index.put(Animations.NATURAL, 						new MyAnim("guynatural3q.png",-1,-1));
-
-		red_animation_index.put(Animations.TURN,							new MyAnim("girl/girl_",301,322));
-//		red_animation_index.put(Animations.THREE_QUARTERS_TO_PROFILE, 		R.drawable.anim_look_l_to_r);
-		red_animation_index.put(Animations.START_WALK, 						new MyAnim("girl/girl_",45,63));
-		red_animation_index.put(Animations.END_WALK, 						new MyAnim("girl/girl_",97,112));
-		red_animation_index.put(Animations.WALK, 							new MyAnim("girl/girl_",64,96,true));
-		red_animation_index.put(Animations.WAVE, 							new MyAnim("girl/girl_",242,300));
-		red_animation_index.put(Animations.SHAKE_HAND, 						new MyAnim("girl/girl_",160,235));
-		red_animation_index.put(Animations.NATURAL, 						new MyAnim("girlnatural3q.png",-1,-1));
-	}
-	
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -224,7 +153,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		
 		mLooking = true;//looking right.
 		
-		fireAnimation(getAnimationsIndex().get(Animations.NATURAL),false);
+		mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
 	}
 
 	/** Called when the activity is first created. */
@@ -251,23 +180,23 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		findViewById(R.id.tr_circle).setOnClickListener(this);
 		findViewById(R.id.bl_circle).setOnClickListener(this);
 		
-		WebView wb = (WebView) findViewById(R.id.webview);
-//		wb.setOnClickListener(this);
-		wb.setBackgroundColor(0);
-//		wb.loadDataWithBaseURL("fake://dagnabbit",
-//				"<div style=\"text-align: center;\"><IMG id=\"myanim\" SRC=\"file:///android_asset/guynatural3q.png\" style=\"height: 100%\" /></div>", 
-//				"text/html",  
-//				"UTF-8", 
-//				"fake://lala");
-//		fireAnimation(getAnimationsIndex().get(Animations.NATURAL),false);
-//		wb.loadUrl("file:///android_asset/animate.html?anim_file=girlshake0&first=160&last=235");
-
-		WebSettings webSettings = wb.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setSupportZoom(false);
+//		WebView wb = (WebView) findViewById(R.id.webview);
+////		wb.setOnClickListener(this);
+//		wb.setBackgroundColor(0);
+////		wb.loadDataWithBaseURL("fake://dagnabbit",
+////				"<div style=\"text-align: center;\"><IMG id=\"myanim\" SRC=\"file:///android_asset/guynatural3q.png\" style=\"height: 100%\" /></div>", 
+////				"text/html",  
+////				"UTF-8", 
+////				"fake://lala");
+////		fireAnimation(getAnimationsIndex().get(Animations.NATURAL),false);
+////		wb.loadUrl("file:///android_asset/animate.html?anim_file=girlshake0&first=160&last=235");
+//
+//		WebSettings webSettings = wb.getSettings();
+//        webSettings.setJavaScriptEnabled(true);
+//        webSettings.setSupportZoom(false);
         
-        fireAnimation(getAnimationsIndex().get(Animations.NATURAL), false);
-        
+        mcv = (MyCanvasView) findViewById(R.id.mycanvas);
+        mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
         
 //        mCharPreview = (SurfaceView) findViewById(R.id.mysurfaceview);
 //        holder = mCharPreview.getHolder();
@@ -351,8 +280,8 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 				//found friend
 				
 				//adjust size
-				WebView wb = (WebView) findViewById(R.id.webview);
-				wb.loadUrl("javascript:document.getElementById('im').style.webkitTransform='scaleX(" + (float) processor.getSizeOfSelf() + ") scaleY(" + (float) processor.getSizeOfSelf() + ")';");
+//				WebView wb = (WebView) findViewById(R.id.webview);
+//				wb.loadUrl("javascript:document.getElementById('im').style.webkitTransform='scaleX(" + (float) processor.getSizeOfSelf() + ") scaleY(" + (float) processor.getSizeOfSelf() + ")';");
 				
 //				final TransformableImageView transformableImageView = (TransformableImageView)findViewById(R.id.head_img);
 //				transformableImageView.post(new Runnable() {
@@ -380,34 +309,17 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 				
 				if(doneTurning && waveTimerDue) {
 //					fireAnimation(getAnimationsIndex().get(Animations.WAVE),false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
 				}
 			}
 		}		
 	} 
 	
 	private void toggleLooking() {
-		fireAnimation(getAnimationsIndex().get(Animations.TURN),true);
+		mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.TURN, MyAnimations.Character.BLUE), false);
 	}
 
-	long anim_start_ts = -1;
-	
-	private void fireAnimation(final MyAnim myAnim, final boolean shouldTurn) {
-		findViewById(R.id.webview).post(new Runnable() {
-			@Override
-			public void run() {
-				long now = (new Date()).getTime();
-				if((now - anim_start_ts) < 2000) return;
-				
-				WebView wb = (WebView) findViewById(R.id.webview);
-				wb.loadUrl("file:///android_asset/animate.html?anim_file="+myAnim.filename+"&first="+myAnim.start+"&last="+myAnim.end+"&flip="+(HeadFollower.this.mLooking ? "1" : "0") + "&loop="+myAnim.loop);
-				if(shouldTurn) HeadFollower.this.mLooking = !HeadFollower.this.mLooking;
-				wb.invalidate();
-				
-				anim_start_ts = now;
-			}
-		});
-	}
-
+	private MyCanvasView mcv;
      
 	@Override
 	public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -421,7 +333,8 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		if(v.getId() == R.id.tr_circle)
 			showChooseAnimDialog();
 		if(v.getId() == R.id.bl_circle) 
-			fireAnimation(getAnimationsIndex().get(Animations.END_WALK), false);
+			mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, MyAnimations.Character.BLUE), false);
+//			fireAnimation(getAnimationsIndex().get(Animations.END_WALK), false);
 	}
 
 	private void showChooseAnimDialog() {
@@ -437,25 +350,25 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		    		flipRedBlue();
 					break;
 				case 1:
-					fireAnimation(getAnimationsIndex().get(Animations.SHAKE_HAND),false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, MyAnimations.Character.BLUE), false);
 					break;
 				case 2:
 					toggleLooking();
 					break;   
 				case 3:  
-					fireAnimation(getAnimationsIndex().get(Animations.WAVE),false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
 					break;
 				case 4:
-					fireAnimation(getAnimationsIndex().get(Animations.START_WALK),false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.START_WALK, MyAnimations.Character.BLUE), false);
 					break;
 				case 5:
-					fireAnimation(getAnimationsIndex().get(Animations.WALK),false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WALK, MyAnimations.Character.BLUE), false);					
 					break;
 				case 6:
-					fireAnimation(getAnimationsIndex().get(Animations.END_WALK),false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, MyAnimations.Character.BLUE), false);
 					break;
 				case 7:
-					fireAnimation(getAnimationsIndex().get(Animations.NATURAL),false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
 					break;
 				default:
 					break;
@@ -480,10 +393,6 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		}
 	}
 
-	private HashMap<Animations, MyAnim> getAnimationsIndex() {
-		HashMap<Animations, MyAnim> index = (!mRedOrBlue) ? red_animation_index : blue_animation_index;
-		return index;
-	}
 
 //	@Override
 //	public void surfaceChanged(SurfaceHolder holder, int format, int width,

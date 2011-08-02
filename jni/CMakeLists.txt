@@ -42,7 +42,46 @@ set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -fPIC" )
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
-set( LIBRARY_DEPS ${AndroidOpenCV_LIBS} ${OpenCV_LIBS} )
+message("OpenCV libs: " ${OpenCV_LIBS} )
+
+set( MY_OpenCV_LIBS 
+#	debug opencv_contrib 
+#	optimized opencv_contrib 
+#	debug opencv_calib3d 
+#	optimized opencv_calib3d 
+#	debug opencv_objdetect 
+#	optimized opencv_objdetect 
+	debug opencv_features2d
+	optimized opencv_features2d 
+	debug opencv_imgproc 
+	optimized opencv_imgproc
+	debug opencv_video
+	optimized opencv_video
+	debug opencv_highgui
+	optimized opencv_highgui
+#	debug opencv_ml
+#	optimized opencv_ml
+#	debug opencv_legacy
+#	optimized opencv_legacy
+#	debug opencv_flann
+#	optimized opencv_flann
+	debug opencv_core
+	optimized opencv_core
+#	debug opencv_androidcamera
+#	optimized opencv_androidcamera
+	debug libjpeg
+	optimized libjpeg
+	debug libpng
+	optimized libpng
+	debug libtiff
+	optimized libtiff
+	debug libjasper
+	optimized libjasper
+	debug zlib
+	optimized zlib
+)
+
+set( LIBRARY_DEPS ${AndroidOpenCV_LIBS} ${MY_OpenCV_LIBS} )
 if(ANDROID)
   set( LIBRARY_DEPS ${LIBRARY_DEPS} log dl)
 endif(ANDROID)
