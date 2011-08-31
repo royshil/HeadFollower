@@ -46,6 +46,7 @@ class Detector {
 	Mat histimg;
 	Mat backproj;
 	bool tracking;
+	bool extra_marker_found;
 	
 	//Kalman filter
 	KalmanFilter KF[2];
@@ -83,7 +84,7 @@ public:
 	bool findCharacter(Mat& img, int i_am, bool _flip, bool _debug);
 #endif
 	
-	void TrackPoints(Mat& img, Mat& hsv, Rect markers[]);
+	void TrackPoints(Mat& img, Mat& hsv, Rect markers[], bool _debug);
 	void KalmanSmooth();
 	
 	int getPtX(Point* p) { return p->x;}
@@ -97,6 +98,7 @@ public:
 	Point getOtherCenter() { if(otherCharacter.size()>=2) { return (otherCharacter[0]+otherCharacter[1])*.5; } else { return Point(-1,-1); } }
 	float getSelfAngle() { return 1.0; }
 	int getWaveTimer() { return waveTimer; }
+	void FindExtraMarker(Mat& img);
 	
 };
 

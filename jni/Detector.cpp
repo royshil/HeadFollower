@@ -150,11 +150,12 @@ double Detector::getSizeOfSelf() {
 	}
 }
 
-void Detector::TrackPoints(Mat& img, Mat& hsv, Rect markers[]) {
+void Detector::TrackPoints(Mat& img, Mat& hsv, Rect markers[], bool _debug) {
 	Rect trackWindow1 = markers[0],trackWindow2 = markers[1];
 	
 	//Create mask out of pixels in HSV value range
 	inRange(hsv,	Scalar(0,		10,		80),
+			//             V        V       V
 					Scalar(180,		256,	256), 
 			trackMask);
 	//imshow("trackmask",trackMask);
@@ -195,21 +196,25 @@ void Detector::TrackPoints(Mat& img, Mat& hsv, Rect markers[]) {
 //		}
 //		cout << endl;
 		
-		//Draw histogram image
-		histimg = Scalar::all(0);
-		int binW = histimg.cols / hsize;
-		Mat buf(1, hsize, CV_8UC3);
-		for( int i = 0; i < hsize; i++ )
-			buf.at<Vec3b>(i) = Vec3b(saturate_cast<uchar>(i*180./hsize), 255, 255);
-		cvtColor(buf, buf, CV_HSV2BGR);
-		
-		for( int i = 0; i < hsize; i++ )
+#ifdef _PC_COMPILE
 		{
-			int val = saturate_cast<int>(hist.at<float>(i)*histimg.rows);
-			rectangle( histimg, Point(i*binW,histimg.rows),
-					  Point((i+1)*binW,histimg.rows - val),
-					  Scalar(buf.at<Vec3b>(i)), -1, 8 );
+			//Draw histogram image
+			histimg = Scalar::all(0);
+			int binW = histimg.cols / hsize;
+			Mat buf(1, hsize, CV_8UC3);
+			for( int i = 0; i < hsize; i++ )
+				buf.at<Vec3b>(i) = Vec3b(saturate_cast<uchar>(i*180./hsize), 255, 255);
+			cvtColor(buf, buf, CV_HSV2BGR);
+			
+			for( int i = 0; i < hsize; i++ )
+			{
+				int val = saturate_cast<int>(hist.at<float>(i)*histimg.rows);
+				rectangle( histimg, Point(i*binW,histimg.rows),
+						  Point((i+1)*binW,histimg.rows - val),
+						  Scalar(buf.at<Vec3b>(i)), -1, 8 );
+			}
 		}
+#endif
 		
 		//calculate variance of histogram, and this will be the measure to how good it is
 		//low variance = a good capture of the color = a good location of the marker
@@ -225,6 +230,8 @@ void Detector::TrackPoints(Mat& img, Mat& hsv, Rect markers[]) {
 //		}
 //		
 //		tmp = tmp.mul(Mat(mults));
+		
+		//putting both marker sub-images in the same image
 		Mat both(Size(roi.cols+roi1.cols,MAX(roi.rows,roi1.rows)),roi.type());
 		Mat left = both(Rect(Point(0,0),roi.size())); roi.copyTo(left);
 		Mat right = both(Rect(Point(roi.cols,0),roi1.size())); roi1.copyTo(right);
@@ -235,19 +242,23 @@ void Detector::TrackPoints(Mat& img, Mat& hsv, Rect markers[]) {
 		Mat(both + -180).copyTo(both_8SC, both > 90);
 		
 		meanStdDev(both_8SC, _mean, _stddev);
-		
-		stringstream ss; ss << "Stdv = " << _stddev[0];
-		putText(histimg, ss.str(), Point(10,10), CV_FONT_HERSHEY_PLAIN, 1.0, Scalar(255), 2);
-		line(histimg, Point((_mean[0]+90)*histimg.cols/180.0,0), Point((_mean[0]+90)*histimg.cols/180.0,histimg.rows), Scalar(255), 4);
-		imshow( "Histogram", histimg );
 
-		if (_stddev[0] > 20) {
+#ifdef _PC_COMPILE		
+		{
+			stringstream ss; ss << "Stdv = " << _stddev[0];
+			putText(histimg, ss.str(), Point(10,10), CV_FONT_HERSHEY_PLAIN, 1.0, Scalar(255), 2);
+			line(histimg, Point((_mean[0]+90)*histimg.cols/180.0,0), Point((_mean[0]+90)*histimg.cols/180.0,histimg.rows), Scalar(255), 4);
+			imshow( "Histogram", histimg );
+		}
+#endif
+		
+		if (_stddev[0] > 20) { //std.deviation too high for a coherent marker
 			this->trackObject = -1;
 			this->tracking = false;
-			cout << "HISTOGRAM NOT COHERENT" << endl;
+			if(_debug) { cout << "HISTOGRAM NOT COHERENT" << endl; }
 			return;
 		} else {
-			this->trackObject = 1; //Begin tracking
+			this->trackObject = 1; //all good, Begin tracking
 		}
 	}
 	
@@ -302,6 +313,8 @@ void Detector::KalmanSmooth() {
 		Point statePt(estimated.at<float>(0),estimated.at<float>(1));
 		//kalmanv.push_back(statePt);
 		
+		//TODO: if error is very high - get out of tracking mode
+		
 		this->otherCharacter[i] = statePt;
 	}
 }	
@@ -340,8 +353,9 @@ bool Detector::findCharacter(Mat& input, int i_am, bool _flip, bool _debug) {
 //	cvtColor(img, img, CV_RGB2BGR);
 	cvtColor(img, gray, CV_RGB2GRAY);
 	cvtColor(img, hsv, CV_BGR2HSV);
-		
+	
 	GetPointsUsingBlobs(selfCharacter, img, gray, hsv, (i_am==IAM_RED)?IAM_BLUE:IAM_RED, _debug);
+	
 	if(!tracking) {
 		//Initialize position of markers
 		cout << "BLOB DETECT" << endl;
@@ -361,7 +375,7 @@ bool Detector::findCharacter(Mat& input, int i_am, bool _flip, bool _debug) {
 							Rect(this->otherCharacter[1]-Point(10,10),Size(20,20))};
 //		rectangle(img, markers[0], Scalar(255), 2);
 //		rectangle(img, markers[1], Scalar(255), 2);
-		TrackPoints(img, hsv, markers); //this->tracking may change here
+		TrackPoints(img, hsv, markers, _debug); //this->tracking may change here
 		
 		//TODO: check if tracking died, converged to one point, or OK
 		if (norm(this->otherCharacter[0] - this->otherCharacter[1]) < 100) {
@@ -374,25 +388,67 @@ bool Detector::findCharacter(Mat& input, int i_am, bool _flip, bool _debug) {
 						   line(img,pt-Point(0,5),pt+Point(0,5),Scalar(0,255,0),2); 
 	//Kalman filter to smooth position of markers
 	//if(tracking)
-		KalmanSmooth();
-	DRAW_CROSS(img,this->otherCharacter[0])
-	DRAW_CROSS(img,this->otherCharacter[1])
-
-	resize(img,_img,_img.size());	//so we'll have some feedback on screen
+	KalmanSmooth();
 	
-	if (/* both characters visible */
+	if(_debug) {
+		DRAW_CROSS(img,this->otherCharacter[0])
+		DRAW_CROSS(img,this->otherCharacter[1])
+	}
+
+	if (otherCharacter.size() >= 2) {
+		//look for extra marker
+		FindExtraMarker(img);
+	}
+	
+	if (// both characters visible 
 		otherCharacter.size()>=2 && selfCharacter.size()>=2 && 
-		/* good vertical alignment */ 
+		// good vertical alignment 
 		fabs(getSelfCenter().y - getOtherCenter().y) < 10.0f) {
 		//increase alignment timer
 		waveTimer = MIN(waveTimer + 1,30);
+
 	} else {
 		waveTimer = MAX(0,waveTimer - 1);
 	}
 
+
+	resize(img,_img,_img.size());	//so we'll have some feedback on screen
+
 	return true;
 }
+	
+#define Point2Vec2f(p) Vec2f((p).x,(p).y)
+#define Vec2f2Point(v) Point((v)[0],(v)[1])
+	
+void Detector::FindExtraMarker(Mat& img) {
+	Vec2f pa = Point2Vec2f(otherCharacter[0]) - Point2Vec2f(otherCharacter[1]); //principle_axis
+	float angle = atan2(3.0, 4.0); //the angle between the diagonal and length
+	//get the vector from the upper marker to the place of the extra-marker
+	Vec2f rotated_upper(pa[0]*cos(angle)+pa[1]*(-sin(angle)), pa[0]*sin(angle)+pa[1]*cos(angle));
+	rotated_upper = rotated_upper * 0.8; // 4/5 is the ratio between the diagonal and the length of the rectangle
 
+	Point extraMarkerPoint = otherCharacter[1]+Vec2f2Point(rotated_upper);
+
+#ifdef _PC_COMPILE	
+//	line(img, otherCharacter[0], otherCharacter[0]+Vec2f2Point(rotated_lower), Scalar(0,0,255), 2);
+//	line(img, otherCharacter[1], extraMarkerPoint, Scalar(0,0,255), 2);
+//	line(img, otherCharacter[0], extraMarkerPoint, Scalar(0,0,255), 2);
+	circle(img, extraMarkerPoint, 10, Scalar(255), 1);
+#endif	
+	
+	//compare histogram of colors within this area to histogram of known marker color
+	Mat _hist;
+	Mat roi = hue(Rect(extraMarkerPoint.x-10,extraMarkerPoint.y-10,20,20)); //TODO: potential bug, hue is uninitialized
+	Mat maskRoi = Mat::ones(roi.size(),CV_8UC1) * 255;
+	calcHist(&roi, 1, 0, maskRoi, _hist, 1, &hsize, &phranges);
+	double chisqr_test = compareHist(_hist, hist, CV_COMP_CHISQR);
+	extra_marker_found = (chisqr_test < 50.0);
+	
+#ifdef _PC_COMPILE
+	putText(img, "EXTRA MARKER", Point(20,20), CV_FONT_HERSHEY_PLAIN, 2.0, Scalar(255), 2);
+#endif
+}
+	
 	/*
 void _GetCandidatePoints(vector<Point2f>& points, Mat& img, Mat& gray, Mat& hsv) {
 	vector<Point2f> corners;

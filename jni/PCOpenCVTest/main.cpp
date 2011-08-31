@@ -20,12 +20,12 @@ int main (int argc, const char * argv[]) {
 		
 		d.findCharacter(img, IAM_BLUE, true, true);
 		
-		if (d.otherCharacter.size()>=2) {
-			line(img, d.otherCharacter[0], d.otherCharacter[1], Scalar(255,0,0), 2);
-		}
-		if (d.selfCharacter.size()>=2) {
-			line(img, d.selfCharacter[0], d.selfCharacter[1], Scalar(0,255,0), 2);
-		}
+//		if (d.otherCharacter.size()>=2) {
+//			line(img, d.otherCharacter[0], d.otherCharacter[1], Scalar(255,0,0), 2);
+//		}
+//		if (d.selfCharacter.size()>=2) {
+//			line(img, d.selfCharacter[0], d.selfCharacter[1], Scalar(0,255,0), 2);
+//		}
 
 		{
 			double sz_of_self = d.getSizeOfSelf();

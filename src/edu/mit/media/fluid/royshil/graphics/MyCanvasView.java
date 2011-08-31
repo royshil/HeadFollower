@@ -102,29 +102,39 @@ public class MyCanvasView extends View {
 			super.run();
 			
 			do {
-				for (int i = myAnim.start; i <= myAnim.end; i++) {
-					try {
-						bmpLock.lock();
-						bmp = BitmapFactory.decodeStream(
-								assets.open(myAnim.filename + new DecimalFormat("0000").format(i) + ".png"));
-						bmpLock.unlock();
-						if(bmp == null) {
-							AlertDialog a = new AlertDialog.Builder(getContext()).create();
-							a.setMessage("Cannot load image");
-							a.show();
-							break;
-						}
-						myCanvasView.postInvalidate();
-						
-						sleep(100);
-					} catch (IOException e) {
-						e.printStackTrace();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-						return;
+				if(myAnim.start == -1 || myAnim.end == -1) {
+					//this is a single image, not an animation
+					tryLoadBitmap(myAnim.filename);
+				} else {
+					for (int i = myAnim.start; i <= myAnim.end; i++) {
+						boolean bitmapLoaded = tryLoadBitmap(myAnim.filename + new DecimalFormat("0000").format(i) + ".png");
+						if(!bitmapLoaded) { break; }
 					}
 				}
 			} while(myAnim.loop);
+		}
+
+		private boolean tryLoadBitmap(String bmpFilename) {
+			try {
+				bmpLock.lock();
+				bmp = BitmapFactory.decodeStream(assets.open(bmpFilename));
+				bmpLock.unlock();
+				if(bmp == null) {
+					AlertDialog a = new AlertDialog.Builder(getContext()).create();
+					a.setMessage("Cannot load image");
+					a.show();
+					return false;
+				}
+				myCanvasView.postInvalidate();
+				
+				sleep(50);
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				return false;
+			}
+			return true;
 		}
 	}
 	

@@ -250,12 +250,12 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 
 		LinkedList<PoolCallback> defaultcallbackstack = new LinkedList<PoolCallback>();
 		defaultcallbackstack.addFirst(glview.getDrawCallback());
-		defaultcallbackstack.addFirst(new CharacterProcessor());
+//		defaultcallbackstack.addFirst(new CharacterProcessor());
 		mPreview.addCallbackStack(defaultcallbackstack);
 		
 		RelativeLayout rl = (RelativeLayout)findViewById(R.id.mainFrameLayout);
-		rl.addView(vidlay);
-		rl.addView(glview);
+//		rl.addView(vidlay);
+//		rl.addView(glview);
 		rl.bringChildToFront(findViewById(R.id.charcterView));
 	}   
 
@@ -297,7 +297,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 					if(!mLooking) toggleLooking();
 				} else {
 					if(mLooking) toggleLooking();
-				}
+				}  
 				
 //				TransformableImageView headImg = (TransformableImageView) findViewById(R.id.head_img);
 //				AnimationDrawable anim = (AnimationDrawable) headImg.getDrawable();
