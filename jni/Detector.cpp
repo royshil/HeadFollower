@@ -445,7 +445,9 @@ void Detector::FindExtraMarker(Mat& img) {
 	extra_marker_found = (chisqr_test < 50.0);
 	
 #ifdef _PC_COMPILE
-	putText(img, "EXTRA MARKER", Point(20,20), CV_FONT_HERSHEY_PLAIN, 2.0, Scalar(255), 2);
+	if (extra_marker_found) {
+		putText(img, "EXTRA MARKER", Point(20,20), CV_FONT_HERSHEY_PLAIN, 2.0, Scalar(255), 2);
+	}
 #endif
 }
 	

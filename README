@@ -13,3 +13,6 @@ To build (very very roughly):
 - Create a project from existing source, using this directory
 - Run ./cmake_run_from_build.sh, this will create, god willing, the lib*.so file needed for running (all JNI calls)
 - Run via eclipse
+
+
+Note: I am doing my best to move the old codebase into the opensource version of PoCoMo. This means that not all the features mentioned in the paper are implemented yet in this version. Please hang on, as I believe around October there will be another big push. Thanks! Roy.

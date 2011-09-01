@@ -11,10 +11,15 @@ int main (int argc, const char * argv[]) {
 	
 	Detector d;
 	
+	VideoWriter vw;
+	
 	while (vc.isOpened()) {
 		vc >> frame;
 		
 		if(!frame.data) break;
+//		if (!vw.isOpened()) {
+//			vw.open("/Users/royshilkrot/Documents/Handheld Projector-Cameras/tracking.AVI", CV_FOURCC('X','V','I','D'), 24.0, frame.size(),true);
+//		}
 		
 		frame.copyTo(img);
 		
@@ -34,6 +39,8 @@ int main (int argc, const char * argv[]) {
 		}
 		
 		imshow("temp",img);
+//		vw.write(img);
+		
 		
 		int c = waitKey(30);
 		if(c==' ') waitKey(0);
