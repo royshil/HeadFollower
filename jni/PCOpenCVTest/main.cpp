@@ -57,7 +57,7 @@ int main (int argc, const char * argv[]) {
 		
 		img = img(Rect(159,59,474-159,429-59));
 		//d.findCharacter(img, IAM_RED, true, true);
-		d.calibrateSelfCharacter(img, IAM_RED, true, true);
+		d.calibrateSelfCharacter(img, IAM_RED, false, true);
 		
 //		if (d.otherCharacter.size()>=2) {
 //			line(img, d.otherCharacter[0], d.otherCharacter[1], Scalar(255,0,0), 2);

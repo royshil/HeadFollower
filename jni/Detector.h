@@ -39,9 +39,9 @@ class Detector {
 	
 	//Meanshift tracker
 	int trackObject;
-	int hsize;
-    float hranges[2];
-    const float* phranges;
+	int hsize[3];
+    float hranges[2],sranges[2],vranges[2];
+    const float* phranges[3];
 	Mat hist;
 	Mat trackMask;
 	Mat hue;
@@ -63,6 +63,7 @@ class Detector {
 	Mat_<float> measurement;
 	
 	int calibration_state;
+	int look_for_extra_marker_count;
 	
 public:
 	bool shouldResize;
@@ -70,9 +71,22 @@ public:
 	vector<Point> otherCharacter;
 	vector<Point> selfCharacter;
 
-	Detector():waveTimer(0),hsize(16),trackObject(-1),kalman_setup(false),calibration_state(CALIBRATE_NOT_FOUND) { 
+	Detector():waveTimer(0),
+				trackObject(-1),
+				kalman_setup(false),
+				calibration_state(CALIBRATE_NOT_FOUND),
+				look_for_extra_marker_count(0),
+				shouldResize(false) 
+	{ 
 		//Setup Meanshift tracker
-		hranges[0] = 0; hranges[1] = 180; phranges = hranges; 
+		hranges[0] = 0; hranges[1] = 180; 
+		sranges[0] = 0; sranges[1] = 255;
+		vranges[0] = 0; vranges[1] = 255;
+		phranges[0] = hranges; 
+		phranges[1] = sranges; 
+		phranges[2] = vranges; 
+		hsize[0] = 20; hsize[1] = 28; hsize[2] = 28;
+		
 #ifdef _PC_COMPILE
 		histimg = Mat::zeros(200, 320, CV_8UC3);
 #endif		
@@ -138,6 +152,11 @@ public:
 		//	cvtColor(img, img, CV_RGB2BGR);
 		//	cvtColor(img, gray, CV_RGB2GRAY);
 		cvtColor(img, hsv, CV_BGR2HSV);
+
+		if(!hue.data)
+			hue.create(hsv.size(), hsv.depth());
+		int ch[] = {0, 0};
+		mixChannels(&hsv, 1, &hue, 1, ch, 1); //prepare hue data for extra marker
 	}		
 	
 };

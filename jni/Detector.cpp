@@ -90,22 +90,14 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
     {
         const vector<Point>& c = contours[idx];
 		float area = (float)(contourArea(Mat(c)));	//TODO: add previous detected marker distance
-		if(area < 10 || area > 1000) continue;
+		if(area < 100 || area > 1000) continue;
 		
 		int num = contours[idx].size();
 		Point* pts = &(contours[idx][0]);
-		if(_debug)
-			fillPoly(img, (const Point**)(&pts), &num, 1, Scalar(255,255,0));
 		
 		//make a "similar" circle to match to
 		Scalar _mean = mean(Mat(contours[idx]));
-		
-		if(_debug) {
-			Vec3b hsvv = hsv.at<Vec3b>(_mean[1],_mean[0]);
-			stringstream ss; ss << "h " << (int)hsvv[0] << " s " << (int)hsvv[1] << " v " << (int)hsvv[2];
-			putText(img,ss.str(),Point(_mean[0],_mean[1]),CV_FONT_HERSHEY_PLAIN,1.0,Scalar(255,255),1);
-		}
-		
+				
 //		circle(img, Point(_mean[0],_mean[1]),2,Scalar(0,0,255),1);
 		vector<Point> circlepts;
 		ellipse2Poly(Point(_mean[0],_mean[1]), Size(10,10),0,0,360,6,circlepts);
@@ -113,9 +105,17 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 //		drawContours(img,_circlepts,0,Scalar(0,255,0));
 		
 		double ellipsematch = matchShapes(Mat(contours[idx]), Mat(circlepts),CV_CONTOURS_MATCH_I2,0.0);
-		if (ellipsematch < 0.5) { //this is just not a circle..
+		if (ellipsematch > 0.5) { //this is just not a circle..
 			continue;
 		}
+
+		if(_debug) {
+			fillPoly(img, (const Point**)(&pts), &num, 1, Scalar(255,255,0));
+			Vec3b hsvv = hsv.at<Vec3b>(_mean[1],_mean[0]);
+			stringstream ss; ss << "h " << (int)hsvv[0] << " s " << (int)hsvv[1] << " v " << (int)hsvv[2];
+			putText(img,ss.str(),Point(_mean[0],_mean[1]),CV_FONT_HERSHEY_PLAIN,1.0,Scalar(255,255),1);
+		}
+		
 //		if(_debug) {
 //			stringstream ss; ss << setprecision(3) << "a = " << area << ", e = " << ellipsematch;
 //			putText(img,ss.str(),Point(_mean[0],_mean[1]),CV_FONT_HERSHEY_PLAIN,1.0,Scalar(255,255),1);
@@ -176,14 +176,14 @@ void Detector::TrackPoints(Rect markers[], bool _debug) {
 		cout << "NEW HISTOGRAM" << endl;
 		//Get histogram over hue channel
 //		int histchannels[] = {1};
-		Mat roi(hue, trackWindow1), maskroi(trackMask, trackWindow1);
-		calcHist(&roi, 1, 0, maskroi, hist, 1, &hsize, &phranges);
+		Mat roi(hsv, trackWindow1), maskroi(trackMask, trackWindow1);
+		calcHist(&roi, 1, 0, maskroi, hist, 1, hsize, phranges);
 
 		//Histogram of other candidate marker
 		Mat hist1;
-		Mat roi1(hue, trackWindow2), maskroi1(trackMask, trackWindow2);
+		Mat roi1(hsv, trackWindow2), maskroi1(trackMask, trackWindow2);
 		
-		calcHist(&roi1, 1, 0, maskroi1, hist1, 1, &hsize, &phranges);
+		calcHist(&roi1, 1, 0, maskroi1, hist1, 1, hsize, phranges);
 		
 		hist = hist + hist1; //combine histograms
 		
@@ -201,23 +201,23 @@ void Detector::TrackPoints(Rect markers[], bool _debug) {
 //		cout << endl;
 		
 #ifdef _PC_COMPILE
-		{
-			//Draw histogram image
-			histimg = Scalar::all(0);
-			int binW = histimg.cols / hsize;
-			Mat buf(1, hsize, CV_8UC3);
-			for( int i = 0; i < hsize; i++ )
-				buf.at<Vec3b>(i) = Vec3b(saturate_cast<uchar>(i*180./hsize), 255, 255);
-			cvtColor(buf, buf, CV_HSV2BGR);
-			
-			for( int i = 0; i < hsize; i++ )
-			{
-				int val = saturate_cast<int>(hist.at<float>(i)*histimg.rows);
-				rectangle( histimg, Point(i*binW,histimg.rows),
-						  Point((i+1)*binW,histimg.rows - val),
-						  Scalar(buf.at<Vec3b>(i)), -1, 8 );
-			}
-		}
+//		{
+//			//Draw histogram image
+//			histimg = Scalar::all(0);
+//			int binW = histimg.cols / hsize[0];
+//			Mat buf(1, hsize, CV_8UC3);
+//			for( int i = 0; i < hsize[0]; i++ )
+//				buf.at<Vec3b>(i) = Vec3b(saturate_cast<uchar>(i*180./hsize[0]), 255, 255);
+//			cvtColor(buf, buf, CV_HSV2BGR);
+//			
+//			for( int i = 0; i < hsize[0]; i++ )
+//			{
+//				int val = saturate_cast<int>(hist.at<float>(i)*histimg.rows);
+//				rectangle( histimg, Point(i*binW,histimg.rows),
+//						  Point((i+1)*binW,histimg.rows - val),
+//						  Scalar(buf.at<Vec3b>(i)), -1, 8 );
+//			}
+//		}
 #endif
 		
 		//calculate variance of histogram, and this will be the measure to how good it is
@@ -267,7 +267,7 @@ void Detector::TrackPoints(Rect markers[], bool _debug) {
 	}
 	
 	//Calc histogram back-projection (can be shared between 2 markers, as they have the same color..)
-	calcBackProject(&hue, 1, 0, hist, backproj, &phranges);
+	calcBackProject(&hsv, 1, 0, hist, backproj, phranges);
 	backproj &= trackMask;
 //	imshow("backproj",backproj);
 	
@@ -339,23 +339,28 @@ int Detector::calibrateSelfCharacter(Mat& _img, int i_am, bool _flip, bool _debu
 	
 	if (selfCharacter.size() == 2) {
 		if(calibration_state == CALIBRATE_NOT_FOUND) {
-			return (calibration_state = CALIBRATE_SEND_EXTRA_MARKER);
+			look_for_extra_marker_count = 0;
+			calibration_state = CALIBRATE_SEND_EXTRA_MARKER;
 		} else if (calibration_state == CALIBRATE_SEND_EXTRA_MARKER) {
-			if(!hue.data)
-				hue.create(hsv.size(), hsv.depth());
-			int ch[] = {0, 0};
-			mixChannels(&hsv, 1, &hue, 1, ch, 1); //prepare hue data for extra marker
+			look_for_extra_marker_count++;
 			if (FindExtraMarker(selfCharacter)) {
 				//extra marker found -> position of self markers found
-				return (calibration_state = CALIBRATE_FOUND);
+				calibration_state = CALIBRATE_FOUND;
 			} else {
-				return (calibration_state = CALIBRATE_NOT_FOUND); //back to looking for self markers
+				//Give it 10 frames to look for the marker before giving up
+				if (look_for_extra_marker_count > 10) {
+					calibration_state = CALIBRATE_NOT_FOUND; //back to looking for self markers
+				} else {
+					calibration_state = CALIBRATE_SEND_EXTRA_MARKER;
+				}
 			}
 		}
 	} else //not enough points to start calibration
-		return (calibration_state = CALIBRATE_NOT_FOUND);
+		calibration_state = CALIBRATE_NOT_FOUND;
 	
-	return (calibration_state = CALIBRATE_NOT_FOUND);
+	img.copyTo(_img);
+	
+	return calibration_state;
 }
 
 /**
@@ -465,13 +470,13 @@ bool Detector::FindExtraMarker(vector<Point>& pts) {
 	Mat _hist;
 	if(!hue.data) return false; //images not setup properly
 	
-	Mat roi = hue(Rect(extraMarkerPoint.x-10,extraMarkerPoint.y-10,20,20)&Rect(0,0,hue.cols,hue.rows));
-	Mat maskRoi = Mat::ones(roi.size(),CV_8UC1) * 255;
-	calcHist(&roi, 1, 0, maskRoi, _hist, 1, &hsize, &phranges);
+	Mat roi = hsv(Rect(extraMarkerPoint.x-10,extraMarkerPoint.y-10,20,20)&Rect(0,0,hsv.cols,hsv.rows));
+//	Mat maskRoi = Mat::ones(roi.size(),CV_8UC1) * 255;
+	int channels[3] = {1,1,1};
+	calcHist(&roi, 1, channels, Mat(), _hist, 3, hsize, phranges);
 
-	roi = hue(Rect(pts[0].x-10,pts[0].y-10,20,20)&Rect(0,0,hue.cols,hue.rows));
-	maskRoi = Mat::ones(roi.size(),CV_8UC1) * 255;
-	calcHist(&roi, 1, 0, maskRoi, hist, 1, &hsize, &phranges);
+	roi = hsv(Rect(pts[0].x-10,pts[0].y-10,20,20)&Rect(0,0,hsv.cols,hsv.rows));
+	calcHist(&roi, 1, channels, Mat(), hist, 3, hsize, phranges);
 	
 	double chisqr_test = compareHist(_hist, hist, CV_COMP_CHISQR);
 	bool extra_marker_found = (chisqr_test < 50.0);
