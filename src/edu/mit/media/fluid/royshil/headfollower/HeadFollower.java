@@ -1,9 +1,5 @@
 package edu.mit.media.fluid.royshil.headfollower;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -12,43 +8,30 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.view.Gravity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup.LayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.LinearLayout.LayoutParams;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.opencv.camera.NativePreviewer;
-import com.opencv.camera.NativeProcessor;
-import com.opencv.camera.NativeProcessor.PoolCallback;
-import com.opencv.jni.image_pool;
-import com.opencv.opengl.GL2CameraViewer;
-
-import edu.mit.media.fluid.charactertracker.jni.Detector;
 import edu.mit.media.fluid.royshil.graphics.MyAnimations;
-import edu.mit.media.fluid.royshil.graphics.MyAnimations.MyAnim;
 import edu.mit.media.fluid.royshil.graphics.MyCanvasView;
 
-public class HeadFollower extends Activity implements android.view.View.OnClickListener, OnSeekBarChangeListener {
-	private static final String LOG_TAG = "HeadFollower";
+public class HeadFollower extends Activity implements android.view.View.OnClickListener, OnSeekBarChangeListener, ICharacterStateHandler {
+	private static final String TAG = "HeadFollower";  
 	private static final int SETTINGS_DIALOG = 99;
-	private NativePreviewer mPreview;
-	private GL2CameraViewer glview;
-	final Detector processor = new Detector();
+
 	public boolean mDebug;
 	public boolean mFlip;
 	public boolean mOpenCV = false;
@@ -57,11 +40,11 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	
 	private boolean mLooking = true; //true == looking right, false == looking left
 	
-	private SurfaceView mCharPreview;
+	private SurfaceView mCharPreview; 
 	private SurfaceHolder holder;
 	private Bundle extras;
 	private MediaPlayer mMediaPlayer;
-	private boolean mIsVideoReadyToBePlayed;
+	private boolean mIsVideoReadyToBePlayed;    
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -79,7 +62,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 				rl.bringChildToFront(findViewById(R.id.charcterView));
 				mOpenCV = false;
 			} else {
-				rl.bringChildToFront(glview); 
+				rl.bringChildToFront(findViewById(R.id.drawtracker)); 
 				mOpenCV = true;				
 			}
 			rl.invalidate();
@@ -145,14 +128,14 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 			imageView.setBackgroundResource(R.drawable.blue_markercircle);
 			imageView3.setBackgroundResource(R.drawable.blue_markercircle);
 		} else {
-			imageView.setBackgroundResource(R.drawable.red_markercircle);
+			imageView.setBackgroundResource(R.drawable.red_markercircle);   
 			imageView3.setBackgroundResource(R.drawable.red_markercircle);
-		}
+		} 
 		imageView.postInvalidate();
 		imageView3.postInvalidate();
 		
 		mLooking = true;//looking right.
-		
+		 
 		mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
 	}
 
@@ -169,7 +152,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 //		headImgView.setOnClickListener(this);
 		
 		
-		initOpenCVViews(); 
+//		initOpenCVViews(); 
 		
 		((SeekBar)findViewById(R.id.hueSeek)).setOnSeekBarChangeListener(this);
 		
@@ -198,6 +181,14 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
         mcv = (MyCanvasView) findViewById(R.id.mycanvas);
         mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
         
+        CharacterTrackerView cview = (CharacterTrackerView) findViewById(R.id.charactertracker);
+        BitmapDrawerSurfaceView dtv = (BitmapDrawerSurfaceView)findViewById(R.id.drawtracker);
+		cview.setBitmapHolder(dtv);
+		cview.setmStateHandler(this);
+
+        RelativeLayout rl = (RelativeLayout)findViewById(R.id.mainFrameLayout);
+        rl.bringChildToFront(findViewById(R.id.charcterView));
+        
 //        mCharPreview = (SurfaceView) findViewById(R.id.mysurfaceview);
 //        holder = mCharPreview.getHolder();
 //        holder.addCallback(this);
@@ -215,105 +206,105 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 
 	}     
           
-	private void initOpenCVViews() {
-		// Create our Preview view and set it as the content of our activity.
-		mPreview = new NativePreviewer(getApplication(), 640, 480);
+//	private void initOpenCVViews() {
+//		// Create our Preview view and set it as the content of our activity.
+//		mPreview = new NativePreviewer(getApplication(), 640, 480);
+//
+//		// RotateAnimation rotateAnimation = new RotateAnimation(0.0f, 90.0f,
+//		// getWindowManager().getDefaultDisplay().getHeight() /2.0f,
+//		// getWindowManager().getDefaultDisplay().getWidth() / 2.0f);
+//		// rotateAnimation.setFillAfter(true);
+//		// rotateAnimation.setDuration(1000);
+//		// mPreview.setAnimation(rotateAnimation);
+//
+//		LayoutParams params = new LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT);
+//		// params.height = getWindowManager().getDefaultDisplay().getHeight();
+//		// params.width = (int) (params.height * 4.0 / 2.88);
+//
+//		LinearLayout vidlay = new LinearLayout(getApplication());
+//
+//		vidlay.setGravity(Gravity.CENTER);
+//		vidlay.addView(mPreview, params);
+//
+//		// make the glview overlay ontop of video preview
+//		mPreview.setZOrderMediaOverlay(false);
+//
+//		// RelativeLayout relativeLayout = (RelativeLayout)
+//		// findViewById(R.id.mainFrameLayout);
+//		// relativeLayout.addView(vidlay);
+//
+//		glview = new GL2CameraViewer(getApplication(), false, 0, 0);
+//		glview.setZOrderMediaOverlay(true);
+//		glview.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT));
+//
+//		// relativeLayout.bringChildToFront(findViewById(R.id.crossandtext));
+//
+//		LinkedList<PoolCallback> defaultcallbackstack = new LinkedList<PoolCallback>();
+//		defaultcallbackstack.addFirst(glview.getDrawCallback());
+////		defaultcallbackstack.addFirst(new CharacterProcessor());
+//		mPreview.addCallbackStack(defaultcallbackstack);
+//		
+//		RelativeLayout rl = (RelativeLayout)findViewById(R.id.mainFrameLayout);
+////		rl.addView(vidlay);
+////		rl.addView(glview);
+//		rl.bringChildToFront(findViewById(R.id.charcterView));
+//	}   
 
-		// RotateAnimation rotateAnimation = new RotateAnimation(0.0f, 90.0f,
-		// getWindowManager().getDefaultDisplay().getHeight() /2.0f,
-		// getWindowManager().getDefaultDisplay().getWidth() / 2.0f);
-		// rotateAnimation.setFillAfter(true);
-		// rotateAnimation.setDuration(1000);
-		// mPreview.setAnimation(rotateAnimation);
-
-		LayoutParams params = new LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT);
-		// params.height = getWindowManager().getDefaultDisplay().getHeight();
-		// params.width = (int) (params.height * 4.0 / 2.88);
-
-		LinearLayout vidlay = new LinearLayout(getApplication());
-
-		vidlay.setGravity(Gravity.CENTER);
-		vidlay.addView(mPreview, params);
-
-		// make the glview overlay ontop of video preview
-		mPreview.setZOrderMediaOverlay(false);
-
-		// RelativeLayout relativeLayout = (RelativeLayout)
-		// findViewById(R.id.mainFrameLayout);
-		// relativeLayout.addView(vidlay);
-
-		glview = new GL2CameraViewer(getApplication(), false, 0, 0);
-		glview.setZOrderMediaOverlay(true);
-		glview.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT));
-
-		// relativeLayout.bringChildToFront(findViewById(R.id.crossandtext));
-
-		LinkedList<PoolCallback> defaultcallbackstack = new LinkedList<PoolCallback>();
-		defaultcallbackstack.addFirst(glview.getDrawCallback());
-//		defaultcallbackstack.addFirst(new CharacterProcessor());
-		mPreview.addCallbackStack(defaultcallbackstack);
-		
-		RelativeLayout rl = (RelativeLayout)findViewById(R.id.mainFrameLayout);
-//		rl.addView(vidlay);
-//		rl.addView(glview);
-		rl.bringChildToFront(findViewById(R.id.charcterView));
-	}   
-
-	@Override
-	protected void onPause() {
-		super.onPause();
-		mPreview.onPause();
-		glview.onPause();
-	} 
-  
-	@Override
-	protected void onResume() {
-		super.onResume();
-		glview.onResume();
-		mPreview.onResume();
-	}	      
-  
-	class CharacterProcessor implements NativeProcessor.PoolCallback {
-		@Override
-		public void process(int idx, image_pool pool, long timestamp, NativeProcessor nativeProcessor) {
-			if(processor.findCharacter(idx, pool, (mRedOrBlue)?1:2, mFlip, mDebug)) {
-				//found friend
-				
-				//adjust size
-//				WebView wb = (WebView) findViewById(R.id.webview);
-//				wb.loadUrl("javascript:document.getElementById('im').style.webkitTransform='scaleX(" + (float) processor.getSizeOfSelf() + ") scaleY(" + (float) processor.getSizeOfSelf() + ")';");
-				
-//				final TransformableImageView transformableImageView = (TransformableImageView)findViewById(R.id.head_img);
-//				transformableImageView.post(new Runnable() {
-//					@Override
-//					public void run() {
-//						transformableImageView.scale = (float) processor.getSizeOfSelf();
-//						transformableImageView.invalidate();
-//					}   
-//				});
-				
-				//look in the right direction
-				if ( processor.getPtX(processor.getOtherCenter()) > processor.getPtX(processor.getSelfCenter())) {
-					if(!mLooking) toggleLooking();
-				} else {
-					if(mLooking) toggleLooking();
-				}  
-				
-//				TransformableImageView headImg = (TransformableImageView) findViewById(R.id.head_img);
-//				AnimationDrawable anim = (AnimationDrawable) headImg.getDrawable();
-//				anim.start();
-//				boolean doneTurning = !anim.isRunning();
-				boolean doneTurning = true;
-				
-				boolean waveTimerDue = processor.getWaveTimer() > 15;
-				
-				if(doneTurning && waveTimerDue) {
-//					fireAnimation(getAnimationsIndex().get(Animations.WAVE),false);
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
-				}
-			}
-		}		
-	} 
+//	@Override
+//	protected void onPause() {
+//		super.onPause();
+//		mPreview.onPause();
+//		glview.onPause();
+//	} 
+//  
+//	@Override
+//	protected void onResume() {
+//		super.onResume();
+//		glview.onResume();
+//		mPreview.onResume();
+//	}	      
+//  
+////	class CharacterProcessor implements NativeProcessor.PoolCallback {
+//		@Override
+//		public void process(int idx, image_pool pool, long timestamp, NativeProcessor nativeProcessor) {
+//			if(processor.findCharacter(idx, pool, (mRedOrBlue)?1:2, mFlip, mDebug)) {
+//				//found friend
+//				
+//				//adjust size
+////				WebView wb = (WebView) findViewById(R.id.webview);
+////				wb.loadUrl("javascript:document.getElementById('im').style.webkitTransform='scaleX(" + (float) processor.getSizeOfSelf() + ") scaleY(" + (float) processor.getSizeOfSelf() + ")';");
+//				
+////				final TransformableImageView transformableImageView = (TransformableImageView)findViewById(R.id.head_img);
+////				transformableImageView.post(new Runnable() {
+////					@Override
+////					public void run() {
+////						transformableImageView.scale = (float) processor.getSizeOfSelf();
+////						transformableImageView.invalidate();
+////					}   
+////				});
+//				
+//				//look in the right direction
+//				if ( processor.getPtX(processor.getOtherCenter()) > processor.getPtX(processor.getSelfCenter())) {
+//					if(!mLooking) toggleLooking();
+//				} else {
+//					if(mLooking) toggleLooking();
+//				}  
+//				
+////				TransformableImageView headImg = (TransformableImageView) findViewById(R.id.head_img);
+////				AnimationDrawable anim = (AnimationDrawable) headImg.getDrawable();
+////				anim.start();
+////				boolean doneTurning = !anim.isRunning();
+//				boolean doneTurning = true;
+//				
+//				boolean waveTimerDue = processor.getWaveTimer() > 15;
+//				
+//				if(doneTurning && waveTimerDue) {
+////					fireAnimation(getAnimationsIndex().get(Animations.WAVE),false);
+//					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
+//				}
+//			}
+//		}		
+//	} 
 	
 	private void toggleLooking() {
 		mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.TURN, MyAnimations.Character.BLUE), false);
@@ -393,6 +384,26 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see edu.mit.media.fluid.royshil.headfollower.ICharacterStateHandler#onCharacterStateChanged(float[])
+	 */
+	@Override
+	public void onCharacterStateChanged(float[] state) {
+		//11-floats:
+		//state[0] = self point1 X
+		//state[1] = self point1 Y
+		//state[2] = self point2 X
+		//state[3] = self point2 Y
+		//state[4] = other point1 X
+		//state[5] = other point1 Y
+		//state[6] = other point2 X
+		//state[7] = other point2 Y
+		//state[8] = wave timer
+		//state[9] = is tracking
+		//state[10] = self size
+		
+		mcv.setRotationAndScale(0.0f, state[10]);
+	}
 
 //	@Override
 //	public void surfaceChanged(SurfaceHolder holder, int format, int width,

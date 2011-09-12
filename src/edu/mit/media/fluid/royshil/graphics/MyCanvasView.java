@@ -40,20 +40,20 @@ public class MyCanvasView extends View {
 		paint.setStyle(Style.STROKE);
 		matrixLock = new ReentrantLock();
 		bmpLock = new ReentrantLock();
-		rotation = 0.0f;
-		scale = 1.0f;
-	}
+		rotation = 0.0f;  
+		scale = 1.0f; 
+	} 
 
 	@Override
 	protected void onDraw(Canvas canvas) {
 		super.onDraw(canvas);
 		
 		if(bmp != null) {
-			paint.setColor(Color.BLUE);
+//			paint.setColor(Color.BLUE);
 			clip = canvas.getClipBounds();
 			float w = clip.width(), w2 = w/2.0f, h = clip.height(), h2 = h/2.0f;
-			canvas.drawRect(0,0,w-1,h-1, paint);
-			canvas.drawCircle(w2, h2, 10, paint);
+//			canvas.drawRect(0,0,w-1,h-1, paint);
+//			canvas.drawCircle(w2, h2, 10, paint);
 			
 			matrixLock.lock();
 			Matrix m = new Matrix();
@@ -68,15 +68,15 @@ public class MyCanvasView extends View {
 			w2 = w/2.0f;
 			h = clip.height();
 			h2 = h/2.0f;
-			paint.setColor(Color.GREEN);
-			canvas.drawRect(0,0,w-1,h-1, paint);
+//			paint.setColor(Color.GREEN);
+//			canvas.drawRect(0,0,w-1,h-1, paint);
 			
 			bmpLock.lock();
 			float left = scale*(w2 - (float)bmp.getWidth()/2.0f);
 			float top = scale*(h2 - (float)bmp.getHeight()/2.0f);
 			canvas.drawBitmap(bmp, left, top, paint);
-			paint.setColor(Color.RED);
-			canvas.drawRect(left, top, left + bmp.getWidth(), top + bmp.getHeight(), paint);
+//			paint.setColor(Color.RED);
+//			canvas.drawRect(left, top, left + bmp.getWidth(), top + bmp.getHeight(), paint);
 			bmpLock.unlock();
 		}
 	}	
@@ -186,6 +186,14 @@ public class MyCanvasView extends View {
 
 		public void setDeg(float deg) {this.deg = deg;}
 		public void setScl(float scl) {this.scl = scl;}
+
+		public float getDeg() {
+			return deg;
+		}
+
+		public float getScl() {
+			return scl;
+		}
 	}
 	
 	public void fireAnimation(final MyAnimations.MyAnim myAnim, final boolean shouldTurn) {
@@ -202,22 +210,23 @@ public class MyCanvasView extends View {
 	}
 	
 	public void setRotationAndScale(float deg, float scl) {
-		if(r != null && r.isAlive()) { 
-			r.interrupt(); 
-			try {
-				r.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			} 
-		}
-		if(r == null) {
+		if(r != null) { 
+			if(r.getDeg() != deg || r.getScl() != scl) {
+				if(r.isAlive()) {
+					r.interrupt(); 
+					try {
+						r.join();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					} 
+				}
+				r.setDeg(deg); 
+				r.setScl(scl); 
+				r.run();
+			}
+		} else {
 			r = new RotatorScaler(deg,scl,this);
 			r.start();
-		} else { 
-			r.setDeg(deg); 
-			r.setScl(scl); 
-			r.run(); 
 		}
-		
 	}
 }

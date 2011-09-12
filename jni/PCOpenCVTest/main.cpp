@@ -6,13 +6,14 @@
 
 int main (int argc, const char * argv[]) {
 	
-	VideoCapture vc("/Users/royshilkrot/Documents/Handheld Projector-Cameras/video-2011-07-27-22-53-48.3gp");
+	VideoCapture vc;
 	Mat frame,img;
 	
 	Detector d;
 	
 	VideoWriter vw;
 	
+	vc.open("video-2011-09-11-20-35-26.avi");
 	while (vc.isOpened()) {
 		vc >> frame;
 		
@@ -23,7 +24,7 @@ int main (int argc, const char * argv[]) {
 		
 		frame.copyTo(img);
 		
-		d.findCharacter(img, IAM_BLUE, true, true);
+		d.findCharacter(img, IAM_RED, true, true);
 		
 //		if (d.otherCharacter.size()>=2) {
 //			line(img, d.otherCharacter[0], d.otherCharacter[1], Scalar(255,0,0), 2);

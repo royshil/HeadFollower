@@ -15,10 +15,6 @@ using namespace std;
 
 using namespace cv;
 
-#ifndef _PC_COMPILE
-	#include "image_pool.h"
-#endif
-
 #define IAM_BLUE 1
 #define IAM_RED 2
 
@@ -31,6 +27,8 @@ class Detector {
 //	long framecount;
 //	Mat prevgray;
 //	VideoWriter writer;
+	
+	
 	int waveTimer;
 	
 	Scalar blueHSVThresh, redHSVThresh;
@@ -45,27 +43,39 @@ class Detector {
 	Mat hue;
 	Mat histimg;
 	Mat backproj;
-	bool tracking;
 	bool extra_marker_found;
+	bool kalman_setup;
+	
+	Mat _img;
+	Mat img;
+	Mat gray;
+	Mat hsv;
 	
 	//Kalman filter
 	KalmanFilter KF[2];
 	Mat_<float> state;
 	Mat processNoise;
 	Mat_<float> measurement;
+	
 public:
+	bool tracking;
 	vector<Point> otherCharacter;
 	vector<Point> selfCharacter;
 
-	Detector():waveTimer(0),hsize(16),trackObject(-1) { 
+	Detector():waveTimer(0),hsize(16),trackObject(-1),kalman_setup(false) { 
 		//Setup Meanshift tracker
 		hranges[0] = 0; hranges[1] = 180; phranges = hranges; 
+#ifdef _PC_COMPILE
 		histimg = Mat::zeros(200, 320, CV_8UC3);
-		
+#endif		
+	};
+	~Detector() {};
+	
+	void setupKalmanFilter() {
 		//Setup Kalman Filter
 		for (int i=0; i<2; i++) {
 			KF[i] = KalmanFilter(4, 2, 0);
-			state = Mat_<float>(4, 1); /* (x, y, Vx, Vy) */
+			state = Mat_<float>(4, 1); // (x, y, Vx, Vy) 
 			processNoise = Mat(4, 1, CV_32F);
 			measurement = (Mat_<float>(2,1) << 0 , 0);
 			setIdentity(KF[i].measurementMatrix);
@@ -75,16 +85,12 @@ public:
 			
 			KF[i].transitionMatrix = *(Mat_<float>(4, 4) << 1,0,1,0,   0,1,0,1,  0,0,1,0,  0,0,0,1);
 		}
-	};
-	virtual ~Detector();
+		kalman_setup = true;
+	}		
 	
-#ifndef _PC_COMPILE
-	bool findCharacter(int idx, image_pool* pool, int i_am, bool _flip, bool _debug);
-#else
 	bool findCharacter(Mat& img, int i_am, bool _flip, bool _debug);
-#endif
 	
-	void TrackPoints(Mat& img, Mat& hsv, Rect markers[], bool _debug);
+	void TrackPoints(Rect markers[], bool _debug);
 	void KalmanSmooth();
 	
 	int getPtX(Point* p) { return p->x;}
@@ -98,7 +104,7 @@ public:
 	Point getOtherCenter() { if(otherCharacter.size()>=2) { return (otherCharacter[0]+otherCharacter[1])*.5; } else { return Point(-1,-1); } }
 	float getSelfAngle() { return 1.0; }
 	int getWaveTimer() { return waveTimer; }
-	void FindExtraMarker(Mat& img);
+	void FindExtraMarker();
 	
 };
 
