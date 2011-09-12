@@ -18,6 +18,10 @@ using namespace cv;
 #define IAM_BLUE 1
 #define IAM_RED 2
 
+#define CALIBRATE_NOT_FOUND 0
+#define CALIBRATE_SEND_EXTRA_MARKER 1
+#define CALIBRATE_FOUND 2
+
 class Detector {
 
 //	vector<Point2f> points,nextPoints;
@@ -43,8 +47,9 @@ class Detector {
 	Mat hue;
 	Mat histimg;
 	Mat backproj;
-	bool extra_marker_found;
+	bool other_extra_marker_found;
 	bool kalman_setup;
+	
 	
 	Mat _img;
 	Mat img;
@@ -57,12 +62,15 @@ class Detector {
 	Mat processNoise;
 	Mat_<float> measurement;
 	
+	int calibration_state;
+	
 public:
+	bool shouldResize;
 	bool tracking;
 	vector<Point> otherCharacter;
 	vector<Point> selfCharacter;
 
-	Detector():waveTimer(0),hsize(16),trackObject(-1),kalman_setup(false) { 
+	Detector():waveTimer(0),hsize(16),trackObject(-1),kalman_setup(false),calibration_state(CALIBRATE_NOT_FOUND) { 
 		//Setup Meanshift tracker
 		hranges[0] = 0; hranges[1] = 180; phranges = hranges; 
 #ifdef _PC_COMPILE
@@ -90,6 +98,8 @@ public:
 	
 	bool findCharacter(Mat& img, int i_am, bool _flip, bool _debug);
 	
+	int calibrateSelfCharacter(Mat& img, int i_am, bool _flip, bool _debug);
+	
 	void TrackPoints(Rect markers[], bool _debug);
 	void KalmanSmooth();
 	
@@ -104,7 +114,31 @@ public:
 	Point getOtherCenter() { if(otherCharacter.size()>=2) { return (otherCharacter[0]+otherCharacter[1])*.5; } else { return Point(-1,-1); } }
 	float getSelfAngle() { return 1.0; }
 	int getWaveTimer() { return waveTimer; }
-	void FindExtraMarker();
+	bool FindExtraMarker(vector<Point>& pts);
+	
+	void setupImages(Mat& _img, bool _flip) { 
+#ifndef _PC_COMPILE
+		if(shouldResize)
+			resize(_img,img,Size(),0.5,0.5);
+		else
+			_img.copyTo(img);
+		
+		//rotate 90 degrees CCW
+		double angle = -90.0;
+		Point2f src_center(img.rows/2.0, img.rows/2.0);
+		Mat rot_mat = getRotationMatrix2D(src_center, angle, 1.0);
+		Mat dst;
+		warpAffine(img, dst, rot_mat, Size(img.rows,img.cols));
+		if(_flip) flip(dst,dst,0);
+		dst.copyTo(img);
+#else
+		_img.copyTo(img);
+#endif
+		
+		//	cvtColor(img, img, CV_RGB2BGR);
+		//	cvtColor(img, gray, CV_RGB2GRAY);
+		cvtColor(img, hsv, CV_BGR2HSV);
+	}		
 	
 };
 

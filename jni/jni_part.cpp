@@ -49,12 +49,42 @@ extern "C" {
 	//    fastdetector.detect(mgray, v);
 	//    for( size_t i = 0; i < v.size(); i++ )
 	//        circle(mbgra, Point(v[i].pt.x, v[i].pt.y), 10, Scalar(0,0,255,255));
+		detector.shouldResize = true;
 		
 		jfloatArray returnfa = GoDetector(env, mbgra, i_am, _flip, _debug);
 		env->ReleaseIntArrayElements(bgra, _bgra, 0);
 
 		return returnfa;
 	}
+	
+	JNIEXPORT jint JNICALL Java_edu_mit_media_fluid_royshil_headfollower_CharacterTrackerView_CalibrateSelf(
+				  JNIEnv* env, 
+				  jobject thiz, 
+				  jint width, 
+				  jint height, 
+				  jbyteArray yuv, 
+				  jintArray bgra,
+				  jint i_am, 
+				  jboolean _flip, 
+				  jboolean _debug )
+	{
+		jbyte* _yuv  = env->GetByteArrayElements(yuv, 0);
+		jint*  _bgra = env->GetIntArrayElements(bgra, 0);
+		
+		Mat myuv(height + height/2, width, CV_8UC1, (unsigned char *)_yuv);
+		Mat mbgra(height, width, CV_8UC4, (unsigned char *)_bgra);
+		cvtColor(myuv, mbgra, CV_YUV420sp2BGR, 4);
+		env->ReleaseByteArrayElements(yuv, _yuv, 0);
+		
+		detector.shouldResize = true;
+		
+		jint retval = detector.calibrateSelfCharacter(mbgra,i_am,_flip,_debug);
+		
+		env->ReleaseIntArrayElements(bgra, _bgra, 0);
+		
+		return retval;
+	}
+	
 		
 	jfloatArray GoDetector(JNIEnv* env, Mat& mbgra, jboolean i_am, jboolean _flip, jboolean _debug) {
 		detector.findCharacter(mbgra, i_am, _flip, _debug);
@@ -81,10 +111,11 @@ extern "C" {
 		return state;	
 	}
 		
-	VideoCapture vc;
+//	VideoCapture vc;
 	Mat frame;
 	int frame_index;
 	string frame_prefix;
+	Mat alpha;
 
 #define ERROR_FILE_DOESNT_EXIST -1
 #define ERROR_FRAME_DATA_NULL -2
@@ -117,8 +148,12 @@ extern "C" {
 					
 					if(frame.data) {
 						frame_index++;
+						detector.shouldResize = false;
 						reta[0] = frame.cols;
 						reta[1] = frame.rows;
+						
+						alpha.create(frame.size(),CV_8UC1);
+						alpha.setTo(255);
 					} else 
 						reta[0] = ERROR_FRAME_DATA_NULL;
 				} 
@@ -152,11 +187,41 @@ extern "C" {
 		stringstream frame_name; frame_name << frame_prefix << frame_index << ".png";
 		frame = imread(frame_name.str());
 		frame_index++;
-		cvtColor(frame,mbgra,CV_RGB2BGR,4);
+				
+		jfloatArray retval = GoDetector(env, frame, i_am, _flip, _debug);
+
+		int fromTo[8] = {0,0, 1,1, 2,2, 3,3};
+		Mat srcs[2] = {frame,alpha};
+		mixChannels(srcs,2,&mbgra,1,fromTo,4); // fill the buffer..
+
+//		jfloatArray retval = env->NewFloatArray(11);
+//		jfloat flta[11] = {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f};
+//		env->SetFloatArrayRegion(retval,0,11,flta);
 		
-		jfloatArray retval = GoDetector(env, mbgra, i_am, _flip, _debug);
 		env->ReleaseIntArrayElements(bgra, _bgra, 0);
 		
 		return retval;
 	}
+	
+	JNIEXPORT void JNICALL Java_edu_mit_media_fluid_royshil_headfollower_CharacterTrackerView_WriteFrame(
+			  JNIEnv* env, 
+			  jobject thiz,
+			  jint width, 
+			  jint height, 
+			  jbyteArray yuv
+				)	
+	{
+		jbyte* _yuv  = env->GetByteArrayElements(yuv, 0);
+		
+		Mat myuv(height + height/2, width, CV_8UC1, (unsigned char *)_yuv);
+		Mat bgr;
+		
+		cvtColor(myuv, bgr, CV_YUV420sp2BGR);
+		
+		env->ReleaseByteArrayElements(yuv, _yuv, 0);
+		
+		stringstream ss; ss << "/sdcard/saved/frame" << frame_index++ << ".png";
+		imwrite(ss.str(),bgr);
+	}
+																													  
 }

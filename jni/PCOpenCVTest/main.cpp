@@ -1,30 +1,63 @@
 #include <stdio.h>
 
-
+#include <iostream>
 #include "Detector.h"
 
+Mat img;
+
+void onMouse( int event, int x, int y, int, void* ) {
+	cout << "mouse vent" << endl;
+	if( event != CV_EVENT_LBUTTONUP )
+        return;
+
+	Point p(x,y);
+//	
+//	
+//	Mat img_roi = img(Rect(p.x-5,p.y-5,10,10));
+//	Mat hsv_; cvtColor(img_roi, hsv_, CV_BGR2HSV);
+//	Scalar mean_ = mean(hsv_);
+//	stringstream ss; ss << mean_.val[0] << "," << mean_.val[1] << "," << mean_.val[2];
+	stringstream ss; ss<<p.x<<","<<p.y;
+	putText(img, ss.str(), p-Point(20,20), CV_FONT_HERSHEY_PLAIN, 1.0, Scalar(255), 1);
+//	circle(img, p, 10, Scalar(255), 2);
+	
+	imshow("temp",img);
+	waitKey(0);
+}
 
 int main (int argc, const char * argv[]) {
 	
 	VideoCapture vc;
-	Mat frame,img;
+	Mat frame;
 	
 	Detector d;
 	
 	VideoWriter vw;
 	
-	vc.open("video-2011-09-11-20-35-26.avi");
-	while (vc.isOpened()) {
-		vc >> frame;
+	namedWindow("temp");
+	setMouseCallback("temp", onMouse, 0);
+	
+	//vc.open("video-2011-09-11-20-35-26.avi");
+	int frame_index = 6;
+	while (/*vc.isOpened()*/ frame_index < 387) {
+//		vc >> frame;
+		stringstream ss; ss<<"saved2/jpgs/frame"<<frame_index++<<".jpg";
+		frame = imread(ss.str());
+		cout << ss.str() << endl;
 		
-		if(!frame.data) break;
+		if(!frame.data) {
+			cerr << "can't read." <<endl;
+			continue;
+		}
 //		if (!vw.isOpened()) {
 //			vw.open("/Users/royshilkrot/Documents/Handheld Projector-Cameras/tracking.AVI", CV_FOURCC('X','V','I','D'), 24.0, frame.size(),true);
 //		}
 		
 		frame.copyTo(img);
 		
-		d.findCharacter(img, IAM_RED, true, true);
+		img = img(Rect(159,59,474-159,429-59));
+		//d.findCharacter(img, IAM_RED, true, true);
+		d.calibrateSelfCharacter(img, IAM_RED, true, true);
 		
 //		if (d.otherCharacter.size()>=2) {
 //			line(img, d.otherCharacter[0], d.otherCharacter[1], Scalar(255,0,0), 2);
@@ -43,7 +76,7 @@ int main (int argc, const char * argv[]) {
 //		vw.write(img);
 		
 		
-		int c = waitKey(30);
+		int c = waitKey(150);
 		if(c==' ') waitKey(0);
 		if(c==27) break;
 	}

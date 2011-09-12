@@ -65,21 +65,17 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 	
 	Mat blobmask;
 	
-	{
-		Mat _tmp; hsv.copyTo(_tmp);
-		vector<Mat> chns; split(_tmp, chns);
-		Mat h = chns[0],s = chns[1], v = chns[2];
-		
+	{		
 		if(i_am == IAM_BLUE) {
-			//inRange(hsv, Scalar(0,40,100), Scalar(37,256,256), blobmask);
-			blobmask = ((h < 37) | (h > 160)) & (s > 30) & (v > 100);
-		} else 
-		if (i_am == IAM_RED) {
+			inRange(hsv, Scalar(0,80,210), Scalar(37,256,256), blobmask);
+		} else if (i_am == IAM_RED) {
 			inRange(hsv, Scalar(85,45,100), Scalar(120,256,256), blobmask);
 		}
 	}
 	
 //	cvtColor(blobmask,img,CV_GRAY2RGB);
+	
+	imshow("blobmask",blobmask);
 	
 	vector<vector<Point> > contours;
 	{
@@ -117,6 +113,9 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 //		drawContours(img,_circlepts,0,Scalar(0,255,0));
 		
 		double ellipsematch = matchShapes(Mat(contours[idx]), Mat(circlepts),CV_CONTOURS_MATCH_I2,0.0);
+		if (ellipsematch < 0.5) { //this is just not a circle..
+			continue;
+		}
 //		if(_debug) {
 //			stringstream ss; ss << setprecision(3) << "a = " << area << ", e = " << ellipsematch;
 //			putText(img,ss.str(),Point(_mean[0],_mean[1]),CV_FONT_HERSHEY_PLAIN,1.0,Scalar(255,255),1);
@@ -124,15 +123,22 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 		
 		area = area / ellipsematch;
 		
-		if(area > maxarea) { secondlargest = largestComp; secondmaxarea = maxarea; largestComp = idx; maxarea = area;}
-		else if(area > secondmaxarea) { secondlargest = idx; secondmaxarea = area; }
+		if(area > maxarea) {  //largest overthrown
+			secondlargest = largestComp; 
+			secondmaxarea = maxarea; 
+			largestComp = idx; 
+			maxarea = area;
+		} else if(area > secondmaxarea) { //second largest overthrown
+			secondlargest = idx; 
+			secondmaxarea = area; 
+		}
     }	
 	for (int i=0; i<contours.size(); i++) { 
 		if(i==secondlargest || i==largestComp) {
 			int num = contours[i].size();
 			Point* pts = &(contours[i][0]);
 			
-			if(_debug) fillPoly(img, (const Point**)(&pts), &num, 1, Scalar((i_am == IAM_BLUE)?255:0,(i_am == IAM_RED)?:255,0,0));
+			if(_debug) fillPoly(img, (const Point**)(&pts), &num, 1, Scalar((i_am == IAM_BLUE)?255:0,(i_am == IAM_RED)?255:0,255));
 			
 			Scalar _mean = mean(Mat(contours[i]));
 			_points.push_back(Point(_mean[0],_mean[1]));
@@ -317,6 +323,41 @@ void Detector::KalmanSmooth() {
 	}
 }	
 
+//#define CALIBRATE_NOT_FOUND 0
+//#define CALIBRATE_SEND_EXTRA_MARKER 1
+//#define CALIBRATE_FOUND 2
+
+int Detector::calibrateSelfCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
+	if(!_img.data) return false;
+	
+	setupImages(_img,_flip);
+	
+	//self localization
+	if(calibration_state == CALIBRATE_NOT_FOUND) {
+		GetPointsUsingBlobs(selfCharacter, img, hsv, (i_am==IAM_RED)?IAM_BLUE:IAM_RED, _debug);
+	}
+	
+	if (selfCharacter.size() == 2) {
+		if(calibration_state == CALIBRATE_NOT_FOUND) {
+			return (calibration_state = CALIBRATE_SEND_EXTRA_MARKER);
+		} else if (calibration_state == CALIBRATE_SEND_EXTRA_MARKER) {
+			if(!hue.data)
+				hue.create(hsv.size(), hsv.depth());
+			int ch[] = {0, 0};
+			mixChannels(&hsv, 1, &hue, 1, ch, 1); //prepare hue data for extra marker
+			if (FindExtraMarker(selfCharacter)) {
+				//extra marker found -> position of self markers found
+				return (calibration_state = CALIBRATE_FOUND);
+			} else {
+				return (calibration_state = CALIBRATE_NOT_FOUND); //back to looking for self markers
+			}
+		}
+	} else //not enough points to start calibration
+		return (calibration_state = CALIBRATE_NOT_FOUND);
+	
+	return (calibration_state = CALIBRATE_NOT_FOUND);
+}
+
 /**
  * Returns 4 points: first 2 is other character, second 2 is self character
  */
@@ -327,32 +368,12 @@ void Detector::KalmanSmooth() {
 bool Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
 	if(!_img.data) return false;
 	
-#ifndef _PC_COMPILE
-	resize(_img,img,Size(),0.5,0.5);
-
-	//rotate 90 degrees CCW
-	double angle = -90.0;
-	Point2f src_center(img.rows/2.0, img.rows/2.0);
-    Mat rot_mat = getRotationMatrix2D(src_center, angle, 1.0);
-    Mat dst;
-    warpAffine(img, dst, rot_mat, Size(img.rows,img.cols));
-	if(_flip) flip(dst,dst,0);
-	dst.copyTo(img);
-#else
-	_img.copyTo(img);
-#endif
-	
-//	cvtColor(img, img, CV_RGB2BGR);
-//	cvtColor(img, gray, CV_RGB2GRAY);
-	cvtColor(img, hsv, CV_BGR2HSV);
-	
-	//self localization
-	GetPointsUsingBlobs(selfCharacter, img, hsv, (i_am==IAM_RED)?IAM_BLUE:IAM_RED, _debug);
+	setupImages(_img,_flip);
 	
 	if(!tracking) {
 		//Initialize position of markers
 		cout << "BLOB DETECT" << endl;
-		GetPointsUsingBlobs(otherCharacter, img, hsv, i_am, _debug);
+		//GetPointsUsingBlobs(otherCharacter, img, hsv, i_am, _debug);
 		tracking = otherCharacter.size() >= 2;
 		if(tracking)
 			cout << "BEGIN TRACKING" << endl;
@@ -389,7 +410,7 @@ bool Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
 		KalmanSmooth();
 
 		//look for extra marker
-		FindExtraMarker();
+		other_extra_marker_found = FindExtraMarker(otherCharacter);
 
 		if(_debug) {
 			DRAW_CROSS(img,this->otherCharacter[0])
@@ -410,7 +431,11 @@ bool Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
 
 
 	if(_debug) {
-		resize(img,_img,_img.size());	//so we'll have some feedback on screen
+		if (shouldResize) {
+			resize(img,_img,_img.size());	//so we'll have some feedback on screen
+		} else {
+			img.copyTo(_img);
+		}
 	}
 	
 	return true;
@@ -419,15 +444,15 @@ bool Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
 #define Point2Vec2f(p) Vec2f((p).x,(p).y)
 #define Vec2f2Point(v) Point((v)[0],(v)[1])
 	
-void Detector::FindExtraMarker() {
-	Vec2f pa = Point2Vec2f(otherCharacter[0]) - Point2Vec2f(otherCharacter[1]); //principle_axis
+bool Detector::FindExtraMarker(vector<Point>& pts) {
+	Vec2f pa = Point2Vec2f(pts[0]) - Point2Vec2f(pts[1]); //principle_axis
 	float angle = atan2(3.0, 4.0); //the angle between the diagonal and length
 	//get the vector from the upper marker to the place of the extra-marker
 	Vec2f rotated_upper(pa[0]*cos(angle)+pa[1]*(-sin(angle)), pa[0]*sin(angle)+pa[1]*cos(angle));
 	rotated_upper = rotated_upper * 0.8; // 4/5 is the ratio between the diagonal and the length of the rectangle
 
-	Point extraMarkerPoint = otherCharacter[1]+Vec2f2Point(rotated_upper);
-	if(!extraMarkerPoint.inside(Rect(0,0,img.cols,img.rows))) return;
+	Point extraMarkerPoint = pts[1]+Vec2f2Point(rotated_upper);
+	if(!extraMarkerPoint.inside(Rect(0,0,img.cols,img.rows))) return false;
 
 #ifdef _PC_COMPILE	
 //	line(img, otherCharacter[0], otherCharacter[0]+Vec2f2Point(rotated_lower), Scalar(0,0,255), 2);
@@ -438,18 +463,26 @@ void Detector::FindExtraMarker() {
 	
 	//compare histogram of colors within this area to histogram of known marker color
 	Mat _hist;
-	if(!hue.data) return;
+	if(!hue.data) return false; //images not setup properly
+	
 	Mat roi = hue(Rect(extraMarkerPoint.x-10,extraMarkerPoint.y-10,20,20)&Rect(0,0,hue.cols,hue.rows));
 	Mat maskRoi = Mat::ones(roi.size(),CV_8UC1) * 255;
 	calcHist(&roi, 1, 0, maskRoi, _hist, 1, &hsize, &phranges);
+
+	roi = hue(Rect(pts[0].x-10,pts[0].y-10,20,20)&Rect(0,0,hue.cols,hue.rows));
+	maskRoi = Mat::ones(roi.size(),CV_8UC1) * 255;
+	calcHist(&roi, 1, 0, maskRoi, hist, 1, &hsize, &phranges);
+	
 	double chisqr_test = compareHist(_hist, hist, CV_COMP_CHISQR);
-	extra_marker_found = (chisqr_test < 50.0);
+	bool extra_marker_found = (chisqr_test < 50.0);
 	
 #ifdef _PC_COMPILE
 	if (extra_marker_found) {
 		putText(img, "EXTRA MARKER", Point(20,20), CV_FONT_HERSHEY_PLAIN, 2.0, Scalar(255), 2);
 	}
 #endif
+	
+	return extra_marker_found;
 }
 	
 	/*

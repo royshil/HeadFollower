@@ -1,5 +1,7 @@
 package edu.mit.media.fluid.royshil.headfollower;
 
+import java.util.Arrays;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -64,6 +66,7 @@ public class BitmapDrawerSurfaceView extends SurfaceView implements IBitmapHolde
 	protected void onDraw(Canvas canvas) {
 		Log.v(TAG, "OnDraw");
 		if(bmp == null) return;
+		if(bmp.isRecycled()) return;
 		super.onDraw(canvas);
 		synchronized (bmp) {
 			canvas.drawBitmap(bmp, canvas.getWidth()/2.0f, canvas.getHeight()/2.0f, paint);

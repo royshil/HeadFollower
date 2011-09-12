@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaPlayer;
+import android.opengl.Visibility;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -28,7 +29,7 @@ import android.widget.Toast;
 import edu.mit.media.fluid.royshil.graphics.MyAnimations;
 import edu.mit.media.fluid.royshil.graphics.MyCanvasView;
 
-public class HeadFollower extends Activity implements android.view.View.OnClickListener, OnSeekBarChangeListener, ICharacterStateHandler {
+public class HeadFollower extends Activity implements android.view.View.OnClickListener, OnSeekBarChangeListener, ICharacterStateHandler, IMarkerShower {
 	private static final String TAG = "HeadFollower";  
 	private static final int SETTINGS_DIALOG = 99;
 
@@ -57,15 +58,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.showOpenCV:
-			RelativeLayout rl = (RelativeLayout)findViewById(R.id.mainFrameLayout);
-			if(mOpenCV) {
-				rl.bringChildToFront(findViewById(R.id.charcterView));
-				mOpenCV = false;
-			} else {
-				rl.bringChildToFront(findViewById(R.id.drawtracker)); 
-				mOpenCV = true;				
-			}
-			rl.invalidate();
+			toggleOpenCV();
 			return true;
 //		case R.id.showsensors_item:
 //			Intent myIntent = new Intent();
@@ -90,6 +83,18 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		default:
 			return super.onOptionsItemSelected(item);
 		}
+	}
+
+	private void toggleOpenCV() {
+		RelativeLayout rl = (RelativeLayout)findViewById(R.id.mainFrameLayout);
+		if(mOpenCV) {
+			rl.bringChildToFront(findViewById(R.id.charcterView));
+			mOpenCV = false;
+		} else {
+			rl.bringChildToFront(findViewById(R.id.drawtracker)); 
+			mOpenCV = true;				
+		}
+		rl.invalidate();
 	}
 	
 	@Override
@@ -154,11 +159,11 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		
 //		initOpenCVViews(); 
 		
-		((SeekBar)findViewById(R.id.hueSeek)).setOnSeekBarChangeListener(this);
-		
-		float hsv[] = new float[3]; 
-		android.graphics.Color.RGBToHSV(255, 0, 0, hsv);
-		((SeekBar)findViewById(R.id.hueSeek)).setProgress((int)hsv[0]);
+//		((SeekBar)findViewById(R.id.hueSeek)).setOnSeekBarChangeListener(this);
+//		
+//		float hsv[] = new float[3]; 
+//		android.graphics.Color.RGBToHSV(255, 0, 0, hsv);
+//		((SeekBar)findViewById(R.id.hueSeek)).setProgress((int)hsv[0]);
 		
 		findViewById(R.id.tr_circle).setOnClickListener(this);
 		findViewById(R.id.bl_circle).setOnClickListener(this);
@@ -316,7 +321,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
 		if(fromUser && seekBar.getTag().equals("hueSeek")) { 
 			int rgbi = Color.HSVToColor(new float[] {(float)progress,1.0f,1.0f});
-			((TextView)findViewById(R.id.debugTxt)).setText("rgb: " + (rgbi & 0x000000ff) + "," + (rgbi >> 8 & 0x000000ff) + "," + (rgbi >> 16 & 0x000000ff));
+//			((TextView)findViewById(R.id.debugTxt)).setText("rgb: " + (rgbi & 0x000000ff) + "," + (rgbi >> 8 & 0x000000ff) + "," + (rgbi >> 16 & 0x000000ff));
 		}
 	}
 	@Override
@@ -329,7 +334,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	}
 
 	private void showChooseAnimDialog() {
-		final CharSequence[] items = {"Flip Red-Blue", "Shake Hands", "Turn Right-Left", "Wave hand", "Start walk", "Walk", "End walk", "Natural pose"};
+		final CharSequence[] items = {"Flip Red-Blue", "Shake Hands", "Turn Right-Left", "Wave hand", "Start walk", "Walk", "End walk", "Natural pose","Toggle OpenCV"};
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle("Pick a color");
@@ -360,6 +365,9 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 					break;
 				case 7:
 					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
+					break;
+				case 8:
+					toggleOpenCV();
 					break;
 				default:
 					break;
@@ -403,6 +411,16 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		//state[10] = self size
 		
 		mcv.setRotationAndScale(0.0f, state[10]);
+	}
+
+	@Override
+	public void showMarker() {
+		findViewById(R.id.extra_marker).setVisibility(View.VISIBLE);
+	}
+
+	@Override
+	public void removeMarker() {
+		findViewById(R.id.extra_marker).setVisibility(View.INVISIBLE);
 	}
 
 //	@Override

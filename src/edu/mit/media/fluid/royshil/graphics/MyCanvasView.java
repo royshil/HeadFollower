@@ -17,6 +17,7 @@ import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 
 public class MyCanvasView extends View {
@@ -139,6 +140,7 @@ public class MyCanvasView extends View {
 	}
 	
 	private class RotatorScaler extends Thread {
+		private static final String TAG = "RotatorScaler";
 		private float deg;
 		private float scl;
 		private MyCanvasView myCanvasView;
@@ -178,7 +180,7 @@ public class MyCanvasView extends View {
 				try {
 					sleep(30);
 				} catch (InterruptedException e) {
-					e.printStackTrace();
+					Log.i(TAG,"interrupted",e);  
 					break;
 				}
 			}
@@ -214,14 +216,14 @@ public class MyCanvasView extends View {
 			if(r.getDeg() != deg || r.getScl() != scl) {
 				if(r.isAlive()) {
 					r.interrupt(); 
-					try {
-						r.join();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					} 
+//					try {
+//						r.join();
+//					} catch (InterruptedException e) {
+//						e.printStackTrace();
+//					} 
 				}
 				r.setDeg(deg); 
-				r.setScl(scl); 
+				r.setScl(Math.min(scl,2.0f)); 
 				r.run();
 			}
 		} else {
