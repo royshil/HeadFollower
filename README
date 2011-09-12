@@ -3,15 +3,14 @@ Welcome to the source repository of the PoCoMo project
 High level details: http://fluid.media.mit.edu/people/roy/current/pocomo.html
 
 Prerequisites:
-- OpenCV 2.3, compiled for Android: http://opencv.willowgarage.com/wiki/Android
-- Android-OpenCV, which is shipped with the OpenCV trunk, but needs to be built manually
+- OpenCV 2.3.1, compiled for Android: http://opencv.willowgarage.com/wiki/Android
 - CMake
 
 
 To build (very very roughly):
 - Open Eclipse
 - Create a project from existing source, using this directory
-- Run ./cmake_run_from_build.sh, this will create, god willing, the lib*.so file needed for running (all JNI calls)
+- run $ANDROID_NDK/ndk-build from jni/, this should build the required lib*.so file.
 - Run via eclipse
 
 
