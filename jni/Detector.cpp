@@ -60,8 +60,11 @@ using namespace cv;
 //	putText(img,ss.str(),Point(10,15),CV_FONT_HERSHEY_PLAIN,1.0,Scalar(255,255),1);
 //}
 
-void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, bool _debug) {
+vector<int> GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, bool get_all_blobs, int i_am, bool _debug) {
 	_points.clear();
+	
+	vector<int> state(3);
+	state[0] = state[1] = state[2] = 0;
 	
 	Mat blobmask;
 	
@@ -74,8 +77,10 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 	}
 	
 //	cvtColor(blobmask,img,CV_GRAY2RGB);
-	
-	imshow("blobmask",blobmask);
+
+//#ifdef _PC_COMPILE
+//	imshow("blobmask",blobmask);
+//#endif
 	
 	vector<vector<Point> > contours;
 	{
@@ -83,6 +88,8 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 		findContours( __tmp, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE );
 	}
 		
+	state[0] = contours.size();
+	
     int idx = 0, largestComp = -1, secondlargest = -1;
 	float maxarea = -1.0f, secondmaxarea = -1.0f;
 	
@@ -91,6 +98,7 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
         const vector<Point>& c = contours[idx];
 		float area = (float)(contourArea(Mat(c)));	//TODO: add previous detected marker distance
 		if(area < 100 || area > 1000) continue;
+		state[1]++;
 		
 		int num = contours[idx].size();
 		Point* pts = &(contours[idx][0]);
@@ -105,9 +113,10 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 //		drawContours(img,_circlepts,0,Scalar(0,255,0));
 		
 		double ellipsematch = matchShapes(Mat(contours[idx]), Mat(circlepts),CV_CONTOURS_MATCH_I2,0.0);
-		if (ellipsematch > 0.5) { //this is just not a circle..
+		if (ellipsematch > 0.1) { //this is just not a circle..
 			continue;
 		}
+		state[2]++;
 
 		if(_debug) {
 			fillPoly(img, (const Point**)(&pts), &num, 1, Scalar(255,255,0));
@@ -121,6 +130,11 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 //			putText(img,ss.str(),Point(_mean[0],_mean[1]),CV_FONT_HERSHEY_PLAIN,1.0,Scalar(255,255),1);
 //		}
 		
+		if(get_all_blobs) {
+			_points.push_back(Point(_mean[0],_mean[1]));
+			continue;
+		}
+		
 		area = area / ellipsematch;
 		
 		if(area > maxarea) {  //largest overthrown
@@ -133,6 +147,9 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 			secondmaxarea = area; 
 		}
     }	
+	if (get_all_blobs) { //skip getting only the top two
+		return state;
+	}
 	for (int i=0; i<contours.size(); i++) { 
 		if(i==secondlargest || i==largestComp) {
 			int num = contours[i].size();
@@ -144,6 +161,7 @@ void GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, int i_am, b
 			_points.push_back(Point(_mean[0],_mean[1]));
 		}
 	}
+	return state;
 }
 
 double Detector::getSizeOfSelf() {
@@ -323,44 +341,46 @@ void Detector::KalmanSmooth() {
 	}
 }	
 
-//#define CALIBRATE_NOT_FOUND 0
-//#define CALIBRATE_SEND_EXTRA_MARKER 1
-//#define CALIBRATE_FOUND 2
-
-int Detector::calibrateSelfCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
-	if(!_img.data) return false;
+vector<int> Detector::calibrateSelfCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
+	vector<int> state(4);
+	state[0] = state[1] = state[2] = state[3] = -1;
+	
+	if(!_img.data) return state;
 	
 	setupImages(_img,_flip);
 	
-	//self localization
-	if(calibration_state == CALIBRATE_NOT_FOUND) {
-		GetPointsUsingBlobs(selfCharacter, img, hsv, (i_am==IAM_RED)?IAM_BLUE:IAM_RED, _debug);
+	if(calibration_state == CALIBRATE_NO_MARKERS_FOUND) {
+		//self localization, look for self markers
+		vector<int> blos_state = GetPointsUsingBlobs(selfCharacter, img, hsv, false, (i_am==IAM_RED)?IAM_BLUE:IAM_RED, _debug);
+		state[1] = blos_state[0]; state[2] = blos_state[1]; state[3] = blos_state[2];
 	}
 	
 	if (selfCharacter.size() == 2) {
-		if(calibration_state == CALIBRATE_NOT_FOUND) {
+		if(calibration_state == CALIBRATE_NO_MARKERS_FOUND) {
 			look_for_extra_marker_count = 0;
 			calibration_state = CALIBRATE_SEND_EXTRA_MARKER;
-		} else if (calibration_state == CALIBRATE_SEND_EXTRA_MARKER) {
+		} else if (calibration_state == CALIBRATE_SEND_EXTRA_MARKER || calibration_state == CALIBRATE_NO_EXTRA_MARKER_FOUND) {
 			look_for_extra_marker_count++;
-			if (FindExtraMarker(selfCharacter)) {
+			if (FindExtraMarkerUsingBlobs(i_am)) {
 				//extra marker found -> position of self markers found
 				calibration_state = CALIBRATE_FOUND;
 			} else {
 				//Give it 10 frames to look for the marker before giving up
-				if (look_for_extra_marker_count > 10) {
-					calibration_state = CALIBRATE_NOT_FOUND; //back to looking for self markers
-				} else {
-					calibration_state = CALIBRATE_SEND_EXTRA_MARKER;
+				calibration_state = CALIBRATE_NO_EXTRA_MARKER_FOUND;
+				if (look_for_extra_marker_count > 5) {
+					calibration_state = CALIBRATE_NO_MARKERS_FOUND; //ok give up
 				}
 			}
 		}
 	} else //not enough points to start calibration
-		calibration_state = CALIBRATE_NOT_FOUND;
+		calibration_state = CALIBRATE_NO_MARKERS_FOUND;
 	
 	img.copyTo(_img);
+//	int fromTo[] = {0,0, 1,1, 2,2};
+//	mixChannels(&img, 1, &_img, 1, fromTo, 3);
+	state[0] = calibration_state;
 	
-	return calibration_state;
+	return state;
 }
 
 /**
@@ -370,22 +390,27 @@ int Detector::calibrateSelfCharacter(Mat& _img, int i_am, bool _flip, bool _debu
 //bool Detector::findCharacter(int idx, image_pool* pool, int i_am, bool _flip, bool _debug) {
 //	Mat _img = pool->getImage(idx),
 //#else
-bool Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
-	if(!_img.data) return false;
+vector<int> Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
+	vector<int> state(4,-1);
+	
+	if(!_img.data) return state;
 	
 	setupImages(_img,_flip);
 	
 	if(!tracking) {
 		//Initialize position of markers
+#ifdef _PC_COMPILE
 		cout << "BLOB DETECT" << endl;
-		//GetPointsUsingBlobs(otherCharacter, img, hsv, i_am, _debug);
+#endif
+		vector<int> blobs_state = GetPointsUsingBlobs(otherCharacter, img, hsv, false, i_am, _debug);
+		state[1] = blobs_state[0];
+		state[2] = blobs_state[1];
+		state[3] = blobs_state[2];
 		tracking = otherCharacter.size() >= 2;
+#ifdef _PC_COMPILE
 		if(tracking)
 			cout << "BEGIN TRACKING" << endl;
-//		KF[0].statePre.at<float>(0) = this->otherCharacter[0].x;
-//		KF[0].statePre.at<float>(1) = this->otherCharacter[0].y;
-//		KF[1].statePre.at<float>(0) = this->otherCharacter[1].x;
-//		KF[1].statePre.at<float>(1) = this->otherCharacter[1].y;
+#endif
 	} 
 	
 	tracking = false;
@@ -421,6 +446,8 @@ bool Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
 			DRAW_CROSS(img,this->otherCharacter[0])
 			DRAW_CROSS(img,this->otherCharacter[1])
 		}
+		
+		state[0] = 1;
 	}
 	
 	if (// both characters visible 
@@ -443,11 +470,56 @@ bool Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
 		}
 	}
 	
-	return true;
+	return state;
 }
 	
 #define Point2Vec2f(p) Vec2f((p).x,(p).y)
 #define Vec2f2Point(v) Point((v)[0],(v)[1])
+
+bool Detector::FindExtraMarkerUsingBlobs(int i_am) {
+	vector<Point> blobs;
+	//get all the good colored good shaped blobs
+	GetPointsUsingBlobs(blobs, img, hsv, true, (i_am==IAM_RED)?IAM_BLUE:IAM_RED, false);
+	
+	if (blobs.size() != 3) {
+		return false; //we can only work if we find exactly 3 blobs..
+	}
+	
+	//look for 90-degree angle between the three
+	//there can be three configurations: 1-2-3, 2-3-1, 3-1-2
+	for (int i=0; i<3; i++) {
+		Vec2f a = Point2Vec2f(blobs[i] - blobs[(i+1)%3]);
+		float na = norm(a);
+		Vec2f an = a * (1.0f / na);
+		Vec2f b = Point2Vec2f(blobs[(i+1)%3] - blobs[(i+2)%3]);
+		float nb = norm(b);
+		Vec2f bn = b * (1.0f / nb);
+
+#ifdef _PC_COMPILE
+		Mat tmp; img.copyTo(tmp);
+		line(tmp, blobs[i], blobs[(i+1)%3], Scalar(255), 2);
+		line(tmp,blobs[(i+1)%3],blobs[(i+2)%3],Scalar(0,255),2);
+
+		stringstream ss; ss<<"abs(dotp): "<<abs(an.dot(bn));
+		putText(tmp, ss.str(), Point(10,10), CV_FONT_HERSHEY_PLAIN, 1.0, Scalar(255,255), 1);
+		ss.str(""); ss<<"na/nb: "<<na/nb;
+		putText(tmp, ss.str(), Point(10,25), CV_FONT_HERSHEY_PLAIN, 1.0, Scalar(255,255), 1);
+		ss.str(""); ss<<"nb/na: "<<nb/na;
+		putText(tmp, ss.str(), Point(10,50), CV_FONT_HERSHEY_PLAIN, 1.0, Scalar(255,255), 1);
+		imshow("tempp", tmp);
+		waitKey(0);
+#endif
+		
+		if(abs(an.dot(bn)) < DETECTOR_EPSILON && 
+		   (fabsf((na / nb) - 0.56) < DETECTOR_TIGHT_EPSILON || fabsf((nb / na) - 0.56) < DETECTOR_TIGHT_EPSILON)) {
+			//(pretty much) 0 dot product says they are perpendicular
+			//and look for a ratio of (pretty much) 0.75 between the lengths
+			//TODO: why is it 0.56??
+			return true;
+		}
+	}
+	return false;
+}
 	
 bool Detector::FindExtraMarker(vector<Point>& pts) {
 	Vec2f pa = Point2Vec2f(pts[0]) - Point2Vec2f(pts[1]); //principle_axis

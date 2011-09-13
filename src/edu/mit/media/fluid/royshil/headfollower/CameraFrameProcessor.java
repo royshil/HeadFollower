@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 
 import android.content.Context;
-import android.graphics.Canvas;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
 import android.util.AttributeSet;
@@ -12,9 +11,9 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 
 public abstract class CameraFrameProcessor extends FrameProcessorBase {
-    static final String TAG = "Sample--SurfaceView";
+    static final String TAG = "CameraFrameProcessor";
 
-    private Camera              mCamera;
+    protected Camera              mCamera;
     private SurfaceHolder       mHolder;
     
     public CameraFrameProcessor(Context context, AttributeSet attrs) {

@@ -18,9 +18,13 @@ using namespace cv;
 #define IAM_BLUE 1
 #define IAM_RED 2
 
-#define CALIBRATE_NOT_FOUND 0
+#define CALIBRATE_NO_MARKERS_FOUND 0
 #define CALIBRATE_SEND_EXTRA_MARKER 1
 #define CALIBRATE_FOUND 2
+#define CALIBRATE_NO_EXTRA_MARKER_FOUND 3
+
+#define DETECTOR_EPSILON 0.05
+#define DETECTOR_TIGHT_EPSILON 0.01
 
 class Detector {
 
@@ -74,7 +78,7 @@ public:
 	Detector():waveTimer(0),
 				trackObject(-1),
 				kalman_setup(false),
-				calibration_state(CALIBRATE_NOT_FOUND),
+				calibration_state(CALIBRATE_NO_MARKERS_FOUND),
 				look_for_extra_marker_count(0),
 				shouldResize(false) 
 	{ 
@@ -110,9 +114,9 @@ public:
 		kalman_setup = true;
 	}		
 	
-	bool findCharacter(Mat& img, int i_am, bool _flip, bool _debug);
+	vector<int> findCharacter(Mat& img, int i_am, bool _flip, bool _debug);
 	
-	int calibrateSelfCharacter(Mat& img, int i_am, bool _flip, bool _debug);
+	vector<int> calibrateSelfCharacter(Mat& img, int i_am, bool _flip, bool _debug);
 	
 	void TrackPoints(Rect markers[], bool _debug);
 	void KalmanSmooth();
@@ -129,6 +133,7 @@ public:
 	float getSelfAngle() { return 1.0; }
 	int getWaveTimer() { return waveTimer; }
 	bool FindExtraMarker(vector<Point>& pts);
+	bool FindExtraMarkerUsingBlobs(int i_am);
 	
 	void setupImages(Mat& _img, bool _flip) { 
 #ifndef _PC_COMPILE
@@ -153,10 +158,10 @@ public:
 		//	cvtColor(img, gray, CV_RGB2GRAY);
 		cvtColor(img, hsv, CV_BGR2HSV);
 
-		if(!hue.data)
-			hue.create(hsv.size(), hsv.depth());
-		int ch[] = {0, 0};
-		mixChannels(&hsv, 1, &hue, 1, ch, 1); //prepare hue data for extra marker
+//		if(!hue.data)
+//			hue.create(hsv.size(), hsv.depth());
+//		int ch[] = {0, 0};
+//		mixChannels(&hsv, 1, &hue, 1, ch, 1); //prepare hue data for extra marker
 	}		
 	
 };

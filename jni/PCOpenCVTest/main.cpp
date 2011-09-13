@@ -37,11 +37,14 @@ int main (int argc, const char * argv[]) {
 	namedWindow("temp");
 	setMouseCallback("temp", onMouse, 0);
 	
+	vector<int> state(1);
+	state[0] = CALIBRATE_NO_MARKERS_FOUND;
+	
 	//vc.open("video-2011-09-11-20-35-26.avi");
-	int frame_index = 6;
-	while (/*vc.isOpened()*/ frame_index < 387) {
+	int frame_index = 1;
+	while (/*vc.isOpened()*/ frame_index < 100) {
 //		vc >> frame;
-		stringstream ss; ss<<"saved2/jpgs/frame"<<frame_index++<<".jpg";
+		stringstream ss; ss<<"/tmp/from_device/frame"<<frame_index++<<".png";
 		frame = imread(ss.str());
 		cout << ss.str() << endl;
 		
@@ -56,8 +59,12 @@ int main (int argc, const char * argv[]) {
 		frame.copyTo(img);
 		
 		img = img(Rect(159,59,474-159,429-59));
-		//d.findCharacter(img, IAM_RED, true, true);
-		d.calibrateSelfCharacter(img, IAM_RED, false, true);
+		
+//		if(state[0] != CALIBRATE_FOUND) {
+//			state = d.calibrateSelfCharacter(img, IAM_RED, false, true);
+//		} if(state[0] == CALIBRATE_FOUND) {
+			d.findCharacter(img, IAM_RED, true, true);
+//		}
 		
 //		if (d.otherCharacter.size()>=2) {
 //			line(img, d.otherCharacter[0], d.otherCharacter[1], Scalar(255,0,0), 2);
@@ -76,7 +83,7 @@ int main (int argc, const char * argv[]) {
 //		vw.write(img);
 		
 		
-		int c = waitKey(150);
+		int c = waitKey(300);
 		if(c==' ') waitKey(0);
 		if(c==27) break;
 	}

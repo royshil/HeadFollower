@@ -7,7 +7,6 @@ import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaPlayer;
-import android.opengl.Visibility;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -16,16 +15,13 @@ import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewGroup.LayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
-import android.widget.TextView;
 import android.widget.Toast;
-
 import edu.mit.media.fluid.royshil.graphics.MyAnimations;
 import edu.mit.media.fluid.royshil.graphics.MyCanvasView;
 
@@ -86,11 +82,14 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	}
 
 	private void toggleOpenCV() {
-		RelativeLayout rl = (RelativeLayout)findViewById(R.id.mainFrameLayout);
-		if(mOpenCV) {
-			rl.bringChildToFront(findViewById(R.id.charcterView));
+		RelativeLayout rl = (RelativeLayout)findViewById(R.id.charactercenterview);
+		if(mOpenCV) { //remove OpenCV view
+			View calibration_or_character = findViewById(
+					cview.getCurrentState() == CharacterTrackerView.State.CALIBRATING_NO_MARKERS_FOUND ? R.id.calibration_text_background : R.id.mycanvas
+					); //if calibrating, bring the calibration text forward, else bring character
+			rl.bringChildToFront(calibration_or_character);
 			mOpenCV = false;
-		} else {
+		} else {	//install OpenCV view
 			rl.bringChildToFront(findViewById(R.id.drawtracker)); 
 			mOpenCV = true;				
 		}
@@ -123,6 +122,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	
 	private void flipRedBlue() {
 		mRedOrBlue = !mRedOrBlue;
+		cview.setI_am(mRedOrBlue ? 2 : 1); //RED = 2, BLUE = 1
 		setRedBlue();
 	}
 
@@ -186,10 +186,11 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
         mcv = (MyCanvasView) findViewById(R.id.mycanvas);
         mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
         
-        CharacterTrackerView cview = (CharacterTrackerView) findViewById(R.id.charactertracker);
+        cview = (CharacterTrackerView) findViewById(R.id.charactertracker);
         BitmapDrawerSurfaceView dtv = (BitmapDrawerSurfaceView)findViewById(R.id.drawtracker);
 		cview.setBitmapHolder(dtv);
 		cview.setmStateHandler(this);
+		cview.setmMarkerShower(this);
 
         RelativeLayout rl = (RelativeLayout)findViewById(R.id.mainFrameLayout);
         rl.bringChildToFront(findViewById(R.id.charcterView));
@@ -316,13 +317,14 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	}
 
 	private MyCanvasView mcv;
+	private CharacterTrackerView cview;
      
 	@Override
 	public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-		if(fromUser && seekBar.getTag().equals("hueSeek")) { 
-			int rgbi = Color.HSVToColor(new float[] {(float)progress,1.0f,1.0f});
-//			((TextView)findViewById(R.id.debugTxt)).setText("rgb: " + (rgbi & 0x000000ff) + "," + (rgbi >> 8 & 0x000000ff) + "," + (rgbi >> 16 & 0x000000ff));
-		}
+//		if(fromUser && seekBar.getTag().equals("hueSeek")) { 
+//			int rgbi = Color.HSVToColor(new float[] {(float)progress,1.0f,1.0f});
+////			((TextView)findViewById(R.id.debugTxt)).setText("rgb: " + (rgbi & 0x000000ff) + "," + (rgbi >> 8 & 0x000000ff) + "," + (rgbi >> 16 & 0x000000ff));
+//		}
 	}
 	@Override
 	public void onClick(View v) {
@@ -334,7 +336,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	}
 
 	private void showChooseAnimDialog() {
-		final CharSequence[] items = {"Flip Red-Blue", "Shake Hands", "Turn Right-Left", "Wave hand", "Start walk", "Walk", "End walk", "Natural pose","Toggle OpenCV"};
+		final CharSequence[] items = {"Flip Red-Blue","Toggle OpenCV","Disable Tracking", "Shake Hands", "Turn Right-Left", "Wave hand", "Start walk", "Walk", "End walk", "Natural pose"};
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle("Pick a color");
@@ -346,28 +348,31 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		    		flipRedBlue();
 					break;
 				case 1:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, MyAnimations.Character.BLUE), false);
+					toggleOpenCV();
 					break;
 				case 2:
-					toggleLooking();
-					break;   
-				case 3:  
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
+					cview.disableTracking();
+					break;
+				case 3:
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, MyAnimations.Character.BLUE), false);
 					break;
 				case 4:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.START_WALK, MyAnimations.Character.BLUE), false);
-					break;
-				case 5:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WALK, MyAnimations.Character.BLUE), false);					
+					toggleLooking();
+					break;   
+				case 5:  
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
 					break;
 				case 6:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, MyAnimations.Character.BLUE), false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.START_WALK, MyAnimations.Character.BLUE), false);
 					break;
 				case 7:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WALK, MyAnimations.Character.BLUE), false);					
 					break;
 				case 8:
-					toggleOpenCV();
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, MyAnimations.Character.BLUE), false);
+					break;
+				case 9:
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
 					break;
 				default:
 					break;
@@ -396,7 +401,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	 * @see edu.mit.media.fluid.royshil.headfollower.ICharacterStateHandler#onCharacterStateChanged(float[])
 	 */
 	@Override
-	public void onCharacterStateChanged(float[] state) {
+	public void onCharacterStateChanged(final float[] state) {
 		//11-floats:
 		//state[0] = self point1 X
 		//state[1] = self point1 Y
@@ -410,17 +415,61 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		//state[9] = is tracking
 		//state[10] = self size
 		
-		mcv.setRotationAndScale(0.0f, state[10]);
+		mcv.post(new Runnable() {
+			@Override
+			public void run() {
+				if(state[4] > 0.0f && state[5] > 0.0f && state[6] > 0.0f  && state[6] > 0.0f) {
+					//other character recognized
+					Log.i(TAG,"other character in sight");
+					
+					mcv.setRotationAndScale(0.0f, state[10]);
+					
+					float midx_self = (state[0]+state[2])/2;
+					float midx_other = (state[4]+state[6])/2;
+					if(midx_self < midx_other) {
+						if(!mLooking) toggleLooking();
+					} else {
+						if(mLooking) toggleLooking();
+					}  
+				}
+			}
+		});
 	}
 
 	@Override
 	public void showMarker() {
-		findViewById(R.id.extra_marker).setVisibility(View.VISIBLE);
+		final View extra = findViewById(R.id.extra_marker);
+		extra.post(new Runnable() {			
+			@Override
+			public void run() {
+				extra.setVisibility(View.VISIBLE);
+			}
+		});
 	}
 
 	@Override
 	public void removeMarker() {
-		findViewById(R.id.extra_marker).setVisibility(View.INVISIBLE);
+		final View extra = findViewById(R.id.extra_marker);
+		extra.post(new Runnable() {			
+			@Override
+			public void run() {
+				extra.setVisibility(View.INVISIBLE);
+			}
+		});
+	}
+
+	@Override
+	public void showCharacter() {
+		final View mycanvas = findViewById(R.id.mycanvas);
+		mycanvas.post(new Runnable() {
+			@Override
+			public void run() {
+				mycanvas.setVisibility(View.VISIBLE);
+				findViewById(R.id.calibration_text).setVisibility(View.INVISIBLE);
+				RelativeLayout rl = (RelativeLayout)findViewById(R.id.charactercenterview);
+				rl.bringChildToFront(mycanvas);
+			}
+		});
 	}
 
 //	@Override

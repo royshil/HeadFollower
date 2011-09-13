@@ -1,6 +1,6 @@
 package edu.mit.media.fluid.royshil.headfollower;
 
-import java.util.Arrays;
+import java.util.concurrent.Semaphore;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -16,6 +16,7 @@ public class BitmapDrawerSurfaceView extends SurfaceView implements IBitmapHolde
 	Bitmap bmp;
 	private SurfaceHolder mHolder;
 	private Paint paint;
+	Semaphore bmp_mutex = new Semaphore(1);
 	
 	public BitmapDrawerSurfaceView(Context context, AttributeSet attrs) {
 		super(context, attrs);
@@ -37,13 +38,19 @@ public class BitmapDrawerSurfaceView extends SurfaceView implements IBitmapHolde
 	 */
 	@Override
 	public void setBmp(Bitmap bmp) {
-		if(this.bmp != null) {
-			this.bmp.recycle();
-			this.bmp = null;
-		}
+		try {
+			bmp_mutex.acquire();
+			if(this.bmp != null) {
+				this.bmp.recycle();
+				this.bmp = null;
+			}
 
-		this.bmp = bmp;
-		this.postInvalidate();
+			this.bmp = bmp;
+			this.postInvalidate();
+			bmp_mutex.release();
+		} catch (InterruptedException e) {
+			Log.e(TAG,"cdn't acquire bmp lock");
+		}
 	}
 
 	@Override
@@ -66,10 +73,14 @@ public class BitmapDrawerSurfaceView extends SurfaceView implements IBitmapHolde
 	protected void onDraw(Canvas canvas) {
 		Log.v(TAG, "OnDraw");
 		if(bmp == null) return;
-		if(bmp.isRecycled()) return;
 		super.onDraw(canvas);
-		synchronized (bmp) {
-			canvas.drawBitmap(bmp, canvas.getWidth()/2.0f, canvas.getHeight()/2.0f, paint);
+		try {
+			bmp_mutex.acquire();
+			if(bmp.isRecycled()) return;
+			canvas.drawBitmap(bmp, 0,0, paint);
+			bmp_mutex.release();
+		} catch (InterruptedException e) {
+			Log.e(TAG,"cldn't acquire bmp lock");
 		}
 	}
 }

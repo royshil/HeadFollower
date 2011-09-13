@@ -6,7 +6,6 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.SurfaceHolder.Callback;
 
 public abstract class FrameProcessorBase extends SurfaceView implements Runnable, SurfaceHolder.Callback {
 	private static final String TAG = "FrameProcessorBase";

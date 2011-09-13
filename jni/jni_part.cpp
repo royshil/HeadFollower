@@ -57,7 +57,7 @@ extern "C" {
 		return returnfa;
 	}
 	
-	JNIEXPORT jint JNICALL Java_edu_mit_media_fluid_royshil_headfollower_CharacterTrackerView_CalibrateSelf(
+	JNIEXPORT jintArray JNICALL Java_edu_mit_media_fluid_royshil_headfollower_CharacterTrackerView_CalibrateSelf(
 				  JNIEnv* env, 
 				  jobject thiz, 
 				  jint width, 
@@ -72,26 +72,33 @@ extern "C" {
 		jint*  _bgra = env->GetIntArrayElements(bgra, 0);
 		
 		Mat myuv(height + height/2, width, CV_8UC1, (unsigned char *)_yuv);
-		Mat mbgra(height, width, CV_8UC4, (unsigned char *)_bgra);
-		cvtColor(myuv, mbgra, CV_YUV420sp2BGR, 4);
+		Mat _mbgra(height, width, CV_8UC4, (unsigned char *)_bgra);
+		cvtColor(myuv, _mbgra, CV_YUV420sp2BGR, 4);
 		env->ReleaseByteArrayElements(yuv, _yuv, 0);
 		
-		detector.shouldResize = true;
+		//detector.shouldResize = true;
 		
-		jint retval = detector.calibrateSelfCharacter(mbgra,i_am,_flip,_debug);
+		//slicing the region of interest...
+		Mat mbgra = _mbgra(Rect(_mbgra.cols/4,_mbgra.rows/10,_mbgra.cols/2,8*_mbgra.rows/10));
+		
+		Scalar m = mean(mbgra);
+		
+		vector<int> inta = detector.calibrateSelfCharacter(mbgra,i_am,_flip,_debug);
 		
 		env->ReleaseIntArrayElements(bgra, _bgra, 0);
 		
-		return retval;
+		jintArray state = env->NewIntArray(4);
+		env->SetIntArrayRegion(state,0,4,&(inta[0]));
+		return state;
 	}
 	
 		
 	jfloatArray GoDetector(JNIEnv* env, Mat& mbgra, jboolean i_am, jboolean _flip, jboolean _debug) {
-		detector.findCharacter(mbgra, i_am, _flip, _debug);
+		vector<int> statev = detector.findCharacter(mbgra, i_am, _flip, _debug);
 				
 		int slfChrSz = detector.selfCharacter.size();
 		int othrChrSz = detector.otherCharacter.size();
-		jfloat a[11] = //{0.0f};
+		jfloat a[15] = //{0.0f};
 		{ 
 			(slfChrSz>0) ? detector.selfCharacter[0].x : -1.0f,
 			(slfChrSz>0) ? detector.selfCharacter[0].y : -1.0f,
@@ -103,11 +110,15 @@ extern "C" {
 			(othrChrSz>1) ? detector.otherCharacter[1].y : -1.0f,
 			detector.getWaveTimer(),
 			detector.tracking ? 1.0f : 0.0f,
-			(float)detector.getSizeOfSelf()
+			(float)detector.getSizeOfSelf(),
+			(float)statev[0], 
+			(float)statev[1], 
+			(float)statev[2], 
+			(float)statev[3]
 		};
 		
-		jfloatArray state = env->NewFloatArray(11);
-		env->SetFloatArrayRegion(state,0,11,a);
+		jfloatArray state = env->NewFloatArray(15);
+		env->SetFloatArrayRegion(state,0,15,a);
 		return state;	
 	}
 		
@@ -116,6 +127,12 @@ extern "C" {
 	int frame_index;
 	string frame_prefix;
 	Mat alpha;
+	
+	JNIEXPORT void JNICALL Java_edu_mit_media_fluid_royshil_headfollower_CharacterTrackerView_ResetFrameIndex(JNIEnv* env, 
+																											  jobject thiz) 
+	{
+		frame_index = 1;
+	}
 
 #define ERROR_FILE_DOESNT_EXIST -1
 #define ERROR_FRAME_DATA_NULL -2
