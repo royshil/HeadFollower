@@ -19,6 +19,7 @@ import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.Toast;
+import edu.mit.media.fluid.royshil.graphics.InteractionBar;
 import edu.mit.media.fluid.royshil.graphics.MyAnimations;
 import edu.mit.media.fluid.royshil.graphics.MyCanvasView;
 
@@ -315,6 +316,8 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 
 	private MyCanvasView mcv;
 	private CharacterTrackerView cview;
+	protected int farInteractionCounter = 0;
+	protected int closeInteractionCounter = 0;
      
 	@Override
 	public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -426,12 +429,41 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 					
 					float midx_self = (state[0]+state[2])/2;
 					float midx_other = (state[4]+state[6])/2;
-					if(midx_self < midx_other) {
+					if(midx_self > midx_other) {
 						if(!mLooking) toggleLooking();
 					} else {
 						if(mLooking) toggleLooking();
 					}  
+					
+					float distance = Math.abs(midx_other-midx_self);
+					Log.i(TAG,"distance: "+distance);
+					if(distance < 100) {
+						farInteractionCounter = Math.min(farInteractionCounter + 1,15);
+						if(distance < 25) {
+							closeInteractionCounter = Math.min(closeInteractionCounter + 1,15);  
+						} else {
+							closeInteractionCounter = Math.max(closeInteractionCounter - 1, 0);
+						}
+					} else {
+						farInteractionCounter = Math.max(farInteractionCounter - 1, 0);
+						closeInteractionCounter = Math.max(closeInteractionCounter - 1, 0);
+					}
+					
+					if(farInteractionCounter == 15 && closeInteractionCounter < 5) {
+						//fire long-distance animation: hand wave
+						mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
+					} 
+					if(farInteractionCounter == 15 && closeInteractionCounter == 15) {
+						mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, MyAnimations.Character.BLUE), false);
+					}
+				} else {
+					farInteractionCounter = Math.max(farInteractionCounter - 1, 0);
+					closeInteractionCounter = Math.max(closeInteractionCounter - 1, 0);					
 				}
+				InteractionBar far = (InteractionBar) findViewById(R.id.interactionbar1);
+				far.setValue(farInteractionCounter);
+				InteractionBar close = (InteractionBar) findViewById(R.id.interactionbar2);
+				close.setValue(closeInteractionCounter);
 			}
 		});
 	}
@@ -465,7 +497,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 			@Override
 			public void run() {
 				mycanvas.setVisibility(View.VISIBLE);
-				findViewById(R.id.calibration_text).setVisibility(View.INVISIBLE);
+				findViewById(R.id.calibration_text_background).setVisibility(View.INVISIBLE);
 				RelativeLayout rl = (RelativeLayout)findViewById(R.id.charactercenterview);
 				rl.bringChildToFront(mycanvas);
 			}
@@ -478,9 +510,16 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		rl.post(new Runnable() {
 			@Override
 			public void run() {
-				rl.bringChildToFront(findViewById(R.id.calibration_text_background));
+				View calib_text_view = findViewById(R.id.calibration_text_background);
+				calib_text_view.setVisibility(View.VISIBLE);
+				rl.bringChildToFront(calib_text_view);
 			}
 		});
+	}
+
+	@Override
+	public void onCalibrationStateChanged(int[] state) {
+		
 	}
 
 //	@Override

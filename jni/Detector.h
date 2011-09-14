@@ -74,12 +74,12 @@ class Detector {
 	
 	vector<vector<Point> > calib_history;
 	
-	float character_to_world_ang;
 public:
 	bool shouldResize;
 	bool tracking;
 	vector<Point> otherCharacter;
 	vector<Point> selfCharacter;
+	float character_to_world_ang;
 
 	Detector():waveTimer(0),
 				trackObject(-1),

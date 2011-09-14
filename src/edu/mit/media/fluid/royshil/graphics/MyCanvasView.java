@@ -59,7 +59,7 @@ public class MyCanvasView extends View {
 			matrixLock.lock();
 			Matrix m = new Matrix();
 			m.reset();
-			m.postTranslate(0, 80);
+//			m.postTranslate(0, 80);
 			m.postConcat(matrix);
 			canvas.setMatrix(m);
 			matrixLock.unlock();
@@ -201,11 +201,12 @@ public class MyCanvasView extends View {
 	public void fireAnimation(final MyAnimations.MyAnim myAnim, final boolean shouldTurn) {
 		if(a != null && a.isAlive()) { 
 			a.interrupt(); 
-			try {
-				a.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			} 
+			a = null;
+//			try {
+//				a.join();
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			} 
 		}
 		a = new Animator(myAnim,shouldTurn,this);
 		a.start(); //TODO: reuse the object

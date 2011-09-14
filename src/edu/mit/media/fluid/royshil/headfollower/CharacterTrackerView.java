@@ -103,6 +103,7 @@ public class CharacterTrackerView extends CameraFrameProcessor {
             	mMarkerShower.removeMarker();
             	mMarkerShower.showCharacter();
         	}
+        	mStateHandler.onCalibrationStateChanged(returnState);
         } else if(currentState == State.WORKING) {
 //        	WriteFrame(getFrameWidth(), getFrameHeight(), data); 
 			float[] state = FindFeatures(getFrameWidth(), getFrameHeight(), data, rgba, i_am, flip, debug);  

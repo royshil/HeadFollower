@@ -61,9 +61,35 @@ int main (int argc, const char * argv[]) {
 		img = img(Rect(159,59,474-159,429-59));
 		
 //		if(state[0] != CALIBRATE_FOUND) {
-			state = d.calibrateSelfCharacter(img, IAM_RED, false, true);
+//			state = d.calibrateSelfCharacter(img, IAM_RED, false, true);
 //		} if(state[0] == CALIBRATE_FOUND) {
-//			d.findCharacter(img, IAM_RED, true, true);
+		d.selfCharacter = vector<Point>(2);
+		d.selfCharacter[0] = Point(120,145);
+		d.selfCharacter[1] = Point(170,245);
+
+		d.findCharacter(img, IAM_RED, true, true);
+		vector<Point> o_t = d.otherCharacter;
+		if (o_t.size() > 1) {			
+			float a = 0.2;
+			Mat trans = (Mat_<float>(2,2) << d.selfCharacter[0].x,d.selfCharacter[0].y,d.selfCharacter[0].x,d.selfCharacter[0].y);
+//			Mat translated = (Mat_<float>(2,2) << o_t[0].x,o_t[0].y,o_t[1].x,o_t[1].y) - trans;
+			Mat o_t_m; Mat(o_t).reshape(1,2).convertTo(o_t_m,CV_32F);
+			Mat translated = o_t_m - trans;
+			Mat oo_t_m = Mat(o_t).reshape(1,2);
+			translated.convertTo(oo_t_m, CV_32S);
+			Mat rot_mat = (Mat_<float>(2,2) << cos(a) , -sin(a), sin(a), cos(a));
+			Mat rotated = translated * rot_mat;
+			rotated.convertTo(oo_t_m, CV_32S);
+			rotated = rotated + trans;
+			rotated.convertTo(oo_t_m, CV_32S);
+
+			line(img, d.selfCharacter[0], d.selfCharacter[1], Scalar(0,255), 2);
+			line(img, d.otherCharacter[0], d.otherCharacter[1], Scalar(255,255), 2);
+			line(img, o_t[0], o_t[1], Scalar(0,255,255), 3);
+			
+		}
+		
+		
 //		}
 		
 //		if (d.otherCharacter.size()>=2) {

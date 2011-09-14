@@ -34,14 +34,19 @@ extern "C" {
 		jint*  _bgra = env->GetIntArrayElements(bgra, 0);
 
 		Mat myuv(height + height/2, width, CV_8UC1, (unsigned char *)_yuv);
-		Mat mbgra(height, width, CV_8UC4, (unsigned char *)_bgra);
+		Mat _mbgra(height, width, CV_8UC4, (unsigned char *)_bgra);
 		Mat mgray(height, width, CV_8UC1, (unsigned char *)_yuv);
 
 		//Please make attention about BGRA byte order
 		//ARGB stored in java as int array becomes BGRA at native level
-		cvtColor(myuv, mbgra, CV_YUV420sp2BGR, 4);
+		cvtColor(myuv, _mbgra, CV_YUV420sp2BGR, 4);
 		
 		env->ReleaseByteArrayElements(yuv, _yuv, 0);
+		
+		detector.shouldResize = true;
+		
+		//slicing the region of interest...
+		Mat mbgra = _mbgra(Rect(_mbgra.cols/4,_mbgra.rows/10,_mbgra.cols/2,8*_mbgra.rows/10));
 		
 	//    vector<KeyPoint> v;
 	//
@@ -49,7 +54,6 @@ extern "C" {
 	//    fastdetector.detect(mgray, v);
 	//    for( size_t i = 0; i < v.size(); i++ )
 	//        circle(mbgra, Point(v[i].pt.x, v[i].pt.y), 10, Scalar(0,0,255,255));
-		detector.shouldResize = true;
 		
 		jfloatArray returnfa = GoDetector(env, mbgra, i_am, _flip, _debug);
 		env->ReleaseIntArrayElements(bgra, _bgra, 0);
@@ -76,7 +80,7 @@ extern "C" {
 		cvtColor(myuv, _mbgra, CV_YUV420sp2BGR, 4);
 		env->ReleaseByteArrayElements(yuv, _yuv, 0);
 		
-		//detector.shouldResize = true;
+		detector.shouldResize = true;
 		
 		//slicing the region of interest...
 		Mat mbgra = _mbgra(Rect(_mbgra.cols/4,_mbgra.rows/10,_mbgra.cols/2,8*_mbgra.rows/10));
@@ -98,16 +102,31 @@ extern "C" {
 				
 		int slfChrSz = detector.selfCharacter.size();
 		int othrChrSz = detector.otherCharacter.size();
+		
+		vector<Point> o_t = detector.otherCharacter;
+		if (othrChrSz > 1) {			
+			float a = detector.character_to_world_ang;
+			Point origin = detector.getSelfCenter();
+			Mat trans = (Mat_<float>(2,2) << origin.x,origin.y,origin.x,origin.y);
+			Mat o_t_m; Mat(o_t).reshape(1,2).convertTo(o_t_m,CV_32F);
+			Mat translated = o_t_m - trans;
+			Mat rot_mat = (Mat_<float>(2,2) << cos(a) , -sin(a), sin(a), cos(a));
+			Mat rotated = translated * rot_mat;
+			rotated = rotated + trans;
+			Mat oo_t_m = Mat(o_t).reshape(1,2);
+			rotated.convertTo(oo_t_m, CV_32S);
+		}
+		
 		jfloat a[15] = //{0.0f};
 		{ 
 			(slfChrSz>0) ? detector.selfCharacter[0].x : -1.0f,
 			(slfChrSz>0) ? detector.selfCharacter[0].y : -1.0f,
 			(slfChrSz>1) ? detector.selfCharacter[1].x : -1.0f,
 			(slfChrSz>1) ? detector.selfCharacter[1].y : -1.0f,
-			(othrChrSz>0) ? detector.otherCharacter[0].x : -1.0f,
-			(othrChrSz>0) ? detector.otherCharacter[0].y : -1.0f,
-			(othrChrSz>1) ? detector.otherCharacter[1].x : -1.0f,
-			(othrChrSz>1) ? detector.otherCharacter[1].y : -1.0f,
+			(othrChrSz>0) ? o_t[0].x : -1.0f,
+			(othrChrSz>0) ? o_t[0].y : -1.0f,
+			(othrChrSz>1) ? o_t[1].x : -1.0f,
+			(othrChrSz>1) ? o_t[1].y : -1.0f,
 			detector.getWaveTimer(),
 			detector.tracking ? 1.0f : 0.0f,
 			(float)detector.getSizeOfSelf(),
