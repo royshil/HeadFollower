@@ -6,14 +6,11 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
-import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -37,11 +34,11 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	
 	private boolean mLooking = true; //true == looking right, false == looking left
 	
-	private SurfaceView mCharPreview; 
-	private SurfaceHolder holder;
-	private Bundle extras;
-	private MediaPlayer mMediaPlayer;
-	private boolean mIsVideoReadyToBePlayed;    
+//	private SurfaceView mCharPreview; 
+//	private SurfaceHolder holder;
+//	private Bundle extras;
+//	private MediaPlayer mMediaPlayer;
+//	private boolean mIsVideoReadyToBePlayed;    
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -336,7 +333,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	}
 
 	private void showChooseAnimDialog() {
-		final CharSequence[] items = {"Flip Red-Blue","Toggle OpenCV","Disable Tracking", "Shake Hands", "Turn Right-Left", "Wave hand", "Start walk", "Walk", "End walk", "Natural pose"};
+		final CharSequence[] items = {"Flip Red-Blue","Toggle OpenCV","Disable Tracking", "Recalibrate", "Shake Hands", "Turn Right-Left", "Wave hand", "Start walk", "Walk", "End walk", "Natural pose"};
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle("Pick a color");
@@ -354,24 +351,27 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 					cview.disableTracking();
 					break;
 				case 3:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, MyAnimations.Character.BLUE), false);
+					cview.recalibrate();
 					break;
 				case 4:
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, MyAnimations.Character.BLUE), false);
+					break;
+				case 5:
 					toggleLooking();
 					break;   
-				case 5:  
+				case 6:  
 					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
 					break;
-				case 6:
+				case 7:
 					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.START_WALK, MyAnimations.Character.BLUE), false);
 					break;
-				case 7:
+				case 8:
 					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WALK, MyAnimations.Character.BLUE), false);					
 					break;
-				case 8:
+				case 9:
 					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, MyAnimations.Character.BLUE), false);
 					break;
-				case 9:
+				case 10:
 					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
 					break;
 				default:
@@ -468,6 +468,17 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 				findViewById(R.id.calibration_text).setVisibility(View.INVISIBLE);
 				RelativeLayout rl = (RelativeLayout)findViewById(R.id.charactercenterview);
 				rl.bringChildToFront(mycanvas);
+			}
+		});
+	}
+
+	@Override
+	public void showCalibrationMessage() {
+		final RelativeLayout rl = (RelativeLayout)findViewById(R.id.charactercenterview);
+		rl.post(new Runnable() {
+			@Override
+			public void run() {
+				rl.bringChildToFront(findViewById(R.id.calibration_text_background));
 			}
 		});
 	}

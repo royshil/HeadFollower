@@ -341,6 +341,28 @@ void Detector::KalmanSmooth() {
 	}
 }	
 
+//Experimental....
+vector<int> Detector::calibrateOtherCharacter(Mat& img, int i_am, bool _flip, bool _debug) {
+	vector<int> state(1,-1);
+	if(!_img.data) return state;
+	
+	setupImages(_img,_flip);
+
+	vector<Point> pts;
+	vector<int> blob_state = GetPointsUsingBlobs(pts, img, hsv, false, i_am, _debug);
+	calib_history.push_back(pts);
+	
+	if(calib_history.size() > 5) {
+		//get mean and standard deviation of last few iterations
+		Scalar mean,stdv; 
+		meanStdDev(Mat(calib_history), mean, stdv);
+		
+		cout << "mean " << mean.val[0] << " stdv " << stdv.val[0] << endl;
+	}
+	
+	return state;
+}
+
 vector<int> Detector::calibrateSelfCharacter(Mat& _img, int i_am, bool _flip, bool _debug) {
 	vector<int> state(4);
 	state[0] = state[1] = state[2] = state[3] = -1;
@@ -364,6 +386,15 @@ vector<int> Detector::calibrateSelfCharacter(Mat& _img, int i_am, bool _flip, bo
 			if (FindExtraMarkerUsingBlobs(i_am)) {
 				//extra marker found -> position of self markers found
 				calibration_state = CALIBRATE_FOUND;
+				
+				//compute angle between world y-axis and character
+				Vec2f y(0,1);
+				Vec2f c = Point2Vec2f(selfCharacter[0]-selfCharacter[1]);
+				Vec2f cn = c * (1.0f/norm(c)); //normalize
+				if (cn.dot(Vec2f(1,0)) < 0) { //if pointing down - flip
+					cn = -cn;
+				}
+				character_to_world_ang = cn.dot(y) - atan2f(3.0f, 4.0f);
 			} else {
 				//Give it 10 frames to look for the marker before giving up
 				calibration_state = CALIBRATE_NO_EXTRA_MARKER_FOUND;
@@ -473,9 +504,6 @@ vector<int> Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug
 	return state;
 }
 	
-#define Point2Vec2f(p) Vec2f((p).x,(p).y)
-#define Vec2f2Point(v) Point((v)[0],(v)[1])
-
 bool Detector::FindExtraMarkerUsingBlobs(int i_am) {
 	vector<Point> blobs;
 	//get all the good colored good shaped blobs

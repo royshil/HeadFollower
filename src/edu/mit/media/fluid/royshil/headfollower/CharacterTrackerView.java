@@ -158,6 +158,7 @@ public class CharacterTrackerView extends CameraFrameProcessor {
 	public native void WriteFrame(int width, int height, byte yuv[]);
 	public native int[] CalibrateSelf(int width, int height, byte yuv[], int[] rgba, int i_am, boolean _flip, boolean _debug);
 	public native void ResetFrameIndex();
+	public native void SetCalibrationState(int state);
 	
     static {
     	Log.i(TAG,"System.loadLibrary(...);");
@@ -178,6 +179,18 @@ public class CharacterTrackerView extends CameraFrameProcessor {
 		mCamera.setPreviewCallback(null);
         mCamera.release();
 		
+		currentStateLock.release();
+	}
+
+	public void recalibrate() {
+		try {
+			currentStateLock.acquire();
+		} catch (InterruptedException e) {
+			Log.e(TAG,"thread interrupted while recalibrate",e);
+		}
+		SetCalibrationState(State.CALIBRATING_NO_MARKERS_FOUND.code);
+		currentState = State.CALIBRATING_NO_MARKERS_FOUND;
+		mMarkerShower.showCalibrationMessage();		
 		currentStateLock.release();
 	}
 

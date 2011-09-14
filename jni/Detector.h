@@ -26,6 +26,9 @@ using namespace cv;
 #define DETECTOR_EPSILON 0.05
 #define DETECTOR_TIGHT_EPSILON 0.01
 
+#define Point2Vec2f(p) Vec2f((p).x,(p).y)
+#define Vec2f2Point(v) Point((v)[0],(v)[1])
+
 class Detector {
 
 //	vector<Point2f> points,nextPoints;
@@ -69,6 +72,9 @@ class Detector {
 	int calibration_state;
 	int look_for_extra_marker_count;
 	
+	vector<vector<Point> > calib_history;
+	
+	float character_to_world_ang;
 public:
 	bool shouldResize;
 	bool tracking;
@@ -117,6 +123,7 @@ public:
 	vector<int> findCharacter(Mat& img, int i_am, bool _flip, bool _debug);
 	
 	vector<int> calibrateSelfCharacter(Mat& img, int i_am, bool _flip, bool _debug);
+	vector<int> calibrateOtherCharacter(Mat& img, int i_am, bool _flip, bool _debug);
 	
 	void TrackPoints(Rect markers[], bool _debug);
 	void KalmanSmooth();
@@ -134,6 +141,8 @@ public:
 	int getWaveTimer() { return waveTimer; }
 	bool FindExtraMarker(vector<Point>& pts);
 	bool FindExtraMarkerUsingBlobs(int i_am);
+	
+	void setCalibrationState(int state) { calibration_state = state;}
 	
 	void setupImages(Mat& _img, bool _flip) { 
 #ifndef _PC_COMPILE

@@ -61,9 +61,9 @@ int main (int argc, const char * argv[]) {
 		img = img(Rect(159,59,474-159,429-59));
 		
 //		if(state[0] != CALIBRATE_FOUND) {
-//			state = d.calibrateSelfCharacter(img, IAM_RED, false, true);
+			state = d.calibrateSelfCharacter(img, IAM_RED, false, true);
 //		} if(state[0] == CALIBRATE_FOUND) {
-			d.findCharacter(img, IAM_RED, true, true);
+//			d.findCharacter(img, IAM_RED, true, true);
 //		}
 		
 //		if (d.otherCharacter.size()>=2) {

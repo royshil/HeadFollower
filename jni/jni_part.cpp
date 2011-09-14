@@ -240,5 +240,12 @@ extern "C" {
 		stringstream ss; ss << "/sdcard/saved/frame" << frame_index++ << ".png";
 		imwrite(ss.str(),bgr);
 	}
-																													  
+							
+	JNIEXPORT void JNICALL Java_edu_mit_media_fluid_royshil_headfollower_CharacterTrackerView_SetCalibrationState(
+																										 JNIEnv* env, 
+																										 jobject thiz,
+																										jint state_to_set)
+	{
+		detector.setCalibrationState(state_to_set);
+	}
 }
