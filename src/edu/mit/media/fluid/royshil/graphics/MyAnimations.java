@@ -44,7 +44,7 @@ public class MyAnimations {
 	private static MyAnimations myAnimations = new MyAnimations();
 	
 	static {
-		blue_animation_index.put(Animations.TURN,							myAnimations.new MyAnim("guy/guy_",329,340));
+		blue_animation_index.put(Animations.TURN,							myAnimations.new MyAnim("guy/guy_",329,341));
 //		blue_animation_index.put(Animations.THREE_QUARTERS_TO_PROFILE, 		R.drawable.anim_look_l_to_r);
 		blue_animation_index.put(Animations.START_WALK, 					myAnimations.new MyAnim("guy/guy_",37,57));
 		blue_animation_index.put(Animations.END_WALK, 						myAnimations.new MyAnim("guy/guy_",90,111));
@@ -53,14 +53,14 @@ public class MyAnimations {
 		blue_animation_index.put(Animations.SHAKE_HAND, 					myAnimations.new MyAnim("guy/guy_",266,325));
 		blue_animation_index.put(Animations.NATURAL, 						myAnimations.new MyAnim("guynatural3q.png",-1,-1));
 
-		red_animation_index.put(Animations.TURN,							myAnimations.new MyAnim("girl/girl_",301,322));
+		red_animation_index.put(Animations.TURN,							myAnimations.new MyAnim("girl/girl_",301,323));
 //		red_animation_index.put(Animations.THREE_QUARTERS_TO_PROFILE, 		R.drawable.anim_look_l_to_r);
 		red_animation_index.put(Animations.START_WALK, 						myAnimations.new MyAnim("girl/girl_",45,63));
 		red_animation_index.put(Animations.END_WALK, 						myAnimations.new MyAnim("girl/girl_",97,112));
 		red_animation_index.put(Animations.WALK, 							myAnimations.new MyAnim("girl/girl_",64,96,true));
 		red_animation_index.put(Animations.WAVE, 							myAnimations.new MyAnim("girl/girl_",242,300));
 		red_animation_index.put(Animations.SHAKE_HAND, 						myAnimations.new MyAnim("girl/girl_",160,235));
-		red_animation_index.put(Animations.NATURAL, 						myAnimations.new MyAnim("girlnatural3q.png",-1,-1));
+		red_animation_index.put(Animations.NATURAL, 						myAnimations.new MyAnim("girl/girl_0035.png",-1,-1));
 	}
 	
 	public static MyAnim getAnimation(Animations a, Character c) {

@@ -32,6 +32,7 @@ public class MyCanvasView extends View {
 	public Lock matrixLock;	//may use Object and notify()-wait()..
 	private Lock bmpLock;
 	private Rect clip;
+	private boolean mLookingRight;
 
 	public MyCanvasView(Context context, AttributeSet attrs) {
 		super(context, attrs);
@@ -43,6 +44,7 @@ public class MyCanvasView extends View {
 		bmpLock = new ReentrantLock();
 		rotation = 0.0f;  
 		scale = 1.0f; 
+		mLookingRight = false;
 	} 
 
 	@Override
@@ -59,8 +61,8 @@ public class MyCanvasView extends View {
 			matrixLock.lock();
 			Matrix m = new Matrix();
 			m.reset();
-//			m.postTranslate(0, 80);
-			m.postConcat(matrix);
+			m.postTranslate(0, 80);
+			m.postConcat(matrix);			
 			canvas.setMatrix(m);
 			matrixLock.unlock();
 			
@@ -75,10 +77,19 @@ public class MyCanvasView extends View {
 			bmpLock.lock();
 			float left = scale*(w2 - (float)bmp.getWidth()/2.0f);
 			float top = scale*(h2 - (float)bmp.getHeight()/2.0f);
-			canvas.drawBitmap(bmp, left, top, paint);
+
+			Bitmap _bmp = bmp;
+			//check if rotated, and set the matrix accordingly
+			if(!mLookingRight) {
+				Matrix _m = new Matrix();
+				_m.preScale(-1.0f, 1.0f);
+				_bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), _m, false);
+			}
+
+			canvas.drawBitmap(_bmp, left, top, paint);
 //			paint.setColor(Color.RED);
 //			canvas.drawRect(left, top, left + bmp.getWidth(), top + bmp.getHeight(), paint);
-			bmpLock.unlock();
+			bmpLock.unlock(); 
 		}
 	}	
 	
@@ -91,31 +102,42 @@ public class MyCanvasView extends View {
 
 		public Animator(
 				MyAnimations.MyAnim myAnim,
-				boolean shouldTurn, MyCanvasView myCanvasView) {
-					this.myAnim = myAnim;
-					this.shouldTurn = shouldTurn;
-					this.myCanvasView = myCanvasView;
-					assets = myCanvasView.getContext().getAssets();
+				boolean shouldTurn, 
+				MyCanvasView myCanvasView) 
+		{
+			this.myAnim = myAnim;
+			this.shouldTurn = shouldTurn;
+			this.myCanvasView = myCanvasView;
+			assets = myCanvasView.getContext().getAssets();
 		}
 		
 		@Override
 		public void run() {
 			super.run();
 			
-			do {
-				if(myAnim.start == -1 || myAnim.end == -1) {
-					//this is a single image, not an animation
-					tryLoadBitmap(myAnim.filename);
-				} else {
-					for (int i = myAnim.start; i <= myAnim.end; i++) {
-						boolean bitmapLoaded = tryLoadBitmap(myAnim.filename + new DecimalFormat("0000").format(i) + ".png");
-						if(!bitmapLoaded) { break; }
+			try {
+				do {
+					if(myAnim.start == -1 || myAnim.end == -1) {
+						//this is a single image, not an animation
+						tryLoadBitmap(myAnim.filename);
+					} else {
+						for (int i = myAnim.start; i <= myAnim.end; i++) {
+							boolean bitmapLoaded;
+								bitmapLoaded = tryLoadBitmap(myAnim.filename + new DecimalFormat("0000").format(i) + ".png");
+							if(!bitmapLoaded) { break; }
+						}
 					}
+				} while(myAnim.loop);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} finally {
+				if(shouldTurn) {
+					myCanvasView.setmLookingRight(!myCanvasView.ismLookingRight());
 				}
-			} while(myAnim.loop);
+			}
 		}
 
-		private boolean tryLoadBitmap(String bmpFilename) {
+		private boolean tryLoadBitmap(String bmpFilename) throws InterruptedException {
 			try {
 				bmpLock.lock();
 				bmp = BitmapFactory.decodeStream(assets.open(bmpFilename));
@@ -128,12 +150,9 @@ public class MyCanvasView extends View {
 				}
 				myCanvasView.postInvalidate();
 				
-				sleep(50);
+				sleep(25);
 			} catch (IOException e) {
 				e.printStackTrace();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-				return false;
 			}
 			return true;
 		}
@@ -232,4 +251,13 @@ public class MyCanvasView extends View {
 			r.start();
 		}
 	}
+	
+	public boolean ismLookingRight() {
+		return mLookingRight;
+	}
+
+	public void setmLookingRight(boolean mLookingRight) {
+		this.mLookingRight = mLookingRight;
+	}
+
 }

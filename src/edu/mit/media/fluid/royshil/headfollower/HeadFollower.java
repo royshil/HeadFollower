@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -21,6 +22,7 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.Toast;
 import edu.mit.media.fluid.royshil.graphics.InteractionBar;
 import edu.mit.media.fluid.royshil.graphics.MyAnimations;
+import edu.mit.media.fluid.royshil.graphics.MyAnimations.Character;
 import edu.mit.media.fluid.royshil.graphics.MyCanvasView;
 
 public class HeadFollower extends Activity implements android.view.View.OnClickListener, OnSeekBarChangeListener, ICharacterStateHandler, IMarkerShower {
@@ -33,7 +35,9 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	public boolean mRedOrBlue = true;
 	public boolean mTouchToColor = true;
 	
-	private boolean mLooking = true; //true == looking right, false == looking left
+	private boolean mLookingToTheRight = true; //true == looking right, false == looking left
+	
+	Character currentCharacter = MyAnimations.Character.RED;
 	
 //	private SurfaceView mCharPreview; 
 //	private SurfaceHolder holder;
@@ -137,9 +141,11 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		imageView.postInvalidate();
 		imageView3.postInvalidate();
 		
-		mLooking = true;//looking right.
+		mLookingToTheRight = true;//looking right.
+		
+		currentCharacter = (mRedOrBlue) ? Character.RED : Character.BLUE;
 		 
-		mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
+		mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, currentCharacter), false);
 	}
 
 	/** Called when the activity is first created. */
@@ -182,7 +188,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 //        webSettings.setSupportZoom(false);
         
         mcv = (MyCanvasView) findViewById(R.id.mycanvas);
-        mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
+        mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, currentCharacter), false);
         
         cview = (CharacterTrackerView) findViewById(R.id.charactertracker);
         BitmapDrawerSurfaceView dtv = (BitmapDrawerSurfaceView)findViewById(R.id.drawtracker);
@@ -311,13 +317,14 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 //	} 
 	
 	private void toggleLooking() {
-		mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.TURN, MyAnimations.Character.BLUE), false);
+		mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.TURN, currentCharacter), true);
 	}
 
 	private MyCanvasView mcv;
 	private CharacterTrackerView cview;
 	protected int farInteractionCounter = 0;
 	protected int closeInteractionCounter = 0;
+	protected int nonInteractionCount = 0;
      
 	@Override
 	public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -331,7 +338,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 		if(v.getId() == R.id.tr_circle)
 			showChooseAnimDialog();
 		if(v.getId() == R.id.bl_circle) 
-			mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, MyAnimations.Character.BLUE), false);
+			mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, currentCharacter), false);
 //			fireAnimation(getAnimationsIndex().get(Animations.END_WALK), false);
 	}
 
@@ -357,25 +364,25 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 					cview.recalibrate();
 					break;
 				case 4:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, MyAnimations.Character.BLUE), false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, currentCharacter), false);
 					break;
 				case 5:
 					toggleLooking();
 					break;   
 				case 6:  
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, currentCharacter), false);
 					break;
 				case 7:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.START_WALK, MyAnimations.Character.BLUE), false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.START_WALK, currentCharacter), false);
 					break;
 				case 8:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WALK, MyAnimations.Character.BLUE), false);					
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WALK, currentCharacter), false);					
 					break;
 				case 9:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, MyAnimations.Character.BLUE), false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.END_WALK, currentCharacter), false);
 					break;
 				case 10:
-					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, MyAnimations.Character.BLUE), false);
+					mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.NATURAL, currentCharacter), false);
 					break;
 				default:
 					break;
@@ -429,18 +436,27 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 					
 					float midx_self = (state[0]+state[2])/2;
 					float midx_other = (state[4]+state[6])/2;
-					if(midx_self > midx_other) {
-						if(!mLooking) toggleLooking();
-					} else {
-						if(mLooking) toggleLooking();
+					if(midx_self > midx_other) { //other character to the left!
+						if(mLookingToTheRight) {
+							toggleLooking();
+							mLookingToTheRight = false;
+//							mcv.setmLookingRight(false);
+						}
+					} else {					//other character to the right!
+						if(!mLookingToTheRight) {
+							toggleLooking();
+							mLookingToTheRight = true;
+//							mcv.setmLookingRight(true);
+						}
 					}  
 					
 					float distance = Math.abs(midx_other-midx_self);
 					Log.i(TAG,"distance: "+distance);
 					if(distance < 100) {
-						farInteractionCounter = Math.min(farInteractionCounter + 1,15);
+						farInteractionCounter = Math.min(farInteractionCounter + 1,10);
+						nonInteractionCount = Math.max(0, nonInteractionCount-1);
 						if(distance < 25) {
-							closeInteractionCounter = Math.min(closeInteractionCounter + 1,15);  
+							closeInteractionCounter = Math.min(closeInteractionCounter + 1,10);  
 						} else {
 							closeInteractionCounter = Math.max(closeInteractionCounter - 1, 0);
 						}
@@ -449,21 +465,27 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 						closeInteractionCounter = Math.max(closeInteractionCounter - 1, 0);
 					}
 					
-					if(farInteractionCounter == 15 && closeInteractionCounter < 5) {
+					if(farInteractionCounter >= 10 && closeInteractionCounter < 5) {
 						//fire long-distance animation: hand wave
-						mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, MyAnimations.Character.BLUE), false);
-					} 
-					if(farInteractionCounter == 15 && closeInteractionCounter == 15) {
-						mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, MyAnimations.Character.BLUE), false);
+						mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.WAVE, currentCharacter), false);
+					} else if(farInteractionCounter >= 10 && closeInteractionCounter >= 10) {
+						mcv.fireAnimation(MyAnimations.getAnimation(MyAnimations.Animations.SHAKE_HAND, currentCharacter), false);
 					}
 				} else {
 					farInteractionCounter = Math.max(farInteractionCounter - 1, 0);
-					closeInteractionCounter = Math.max(closeInteractionCounter - 1, 0);					
+					closeInteractionCounter = Math.max(closeInteractionCounter - 1, 0);
+					nonInteractionCount = Math.min(nonInteractionCount + 1,30);
 				}
 				InteractionBar far = (InteractionBar) findViewById(R.id.interactionbar1);
 				far.setValue(farInteractionCounter);
 				InteractionBar close = (InteractionBar) findViewById(R.id.interactionbar2);
 				close.setValue(closeInteractionCounter);
+				if(nonInteractionCount >= 30) {
+					Toast t = Toast.makeText(getApplicationContext(), "Put us together, if you want us to play!", 5);
+					t.setGravity(Gravity.BOTTOM, 0, 0);
+					t.show();
+					nonInteractionCount = 0;
+				}
 			}
 		});
 	}
@@ -518,8 +540,18 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 	}
 
 	@Override
-	public void onCalibrationStateChanged(int[] state) {
-		
+	public void onCalibrationStateChanged(final int[] state) {
+		final InteractionBar far = (InteractionBar)findViewById(R.id.interactionbar1);
+		far.post(new Runnable() {
+			@Override
+			public void run() {
+				far.setMax(10.0f);
+				far.setValue((float)(state[1]));
+				InteractionBar close = (InteractionBar) findViewById(R.id.interactionbar2);
+				close.setMax(2.0f);
+				close.setValue((float)(state[3]));
+			}
+		});
 	}
 
 //	@Override
