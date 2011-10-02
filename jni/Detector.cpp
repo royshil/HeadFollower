@@ -60,7 +60,7 @@ using namespace cv;
 //	putText(img,ss.str(),Point(10,15),CV_FONT_HERSHEY_PLAIN,1.0,Scalar(255,255),1);
 //}
 
-vector<int> GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, bool get_all_blobs, int i_am, bool _debug) {
+vector<int> Detector::GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, bool get_all_blobs, int i_am, bool _debug) {
 	_points.clear();
 	
 	vector<int> state(3);
@@ -107,13 +107,12 @@ vector<int> GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, bool
 		Scalar _mean = mean(Mat(contours[idx]));
 				
 //		circle(img, Point(_mean[0],_mean[1]),2,Scalar(0,0,255),1);
-		vector<Point> circlepts;
-		ellipse2Poly(Point(_mean[0],_mean[1]), Size(10,10),0,0,360,6,circlepts);
+		Mat new_circlePts = Mat(circlepts) + _mean;
 //		vector<vector<Point> > _circlepts; _circlepts.push_back(circlepts);
 //		drawContours(img,_circlepts,0,Scalar(0,255,0));
 		
-		double ellipsematch = matchShapes(Mat(contours[idx]), Mat(circlepts),CV_CONTOURS_MATCH_I2,0.0);
-		if (ellipsematch > 0.1) { //this is just not a circle..
+		double ellipsematch = matchShapes(Mat(contours[idx]), new_circlePts, CV_CONTOURS_MATCH_I2, 0.0);
+		if (ellipsematch > 0.2) { //this is just not a circle..
 			continue;
 		}
 		state[2]++;
@@ -430,15 +429,13 @@ vector<int> Detector::findCharacter(Mat& _img, int i_am, bool _flip, bool _debug
 	
 	if(!tracking) {
 		//Initialize position of markers
-#ifdef _PC_COMPILE
-		cout << "BLOB DETECT" << endl;
-#endif
 		vector<int> blobs_state = GetPointsUsingBlobs(otherCharacter, img, hsv, false, i_am, _debug);
 		state[1] = blobs_state[0];
 		state[2] = blobs_state[1];
 		state[3] = blobs_state[2];
 		tracking = otherCharacter.size() >= 2;
 #ifdef _PC_COMPILE
+		cout << "BLOB DETECT: " << state[1] << "," << state[2] << "," << state[3] << endl;
 		if(tracking)
 			cout << "BEGIN TRACKING" << endl;
 #endif
@@ -543,6 +540,14 @@ bool Detector::FindExtraMarkerUsingBlobs(int i_am) {
 			//(pretty much) 0 dot product says they are perpendicular
 			//and look for a ratio of (pretty much) 0.75 between the lengths
 			//TODO: why is it 0.56??
+			if (na > nb) {
+				selfCharacter[0] = blobs[i];
+				selfCharacter[1] = blobs[(i+1)%3];
+			} else {
+				selfCharacter[0] = blobs[(i+1)%3];
+				selfCharacter[1] = blobs[(i+2)%3];
+			}
+
 			return true;
 		}
 	}

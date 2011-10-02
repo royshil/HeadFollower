@@ -73,7 +73,8 @@ class Detector {
 	int look_for_extra_marker_count;
 	
 	vector<vector<Point> > calib_history;
-	
+	vector<Point> circlepts;
+
 public:
 	bool shouldResize;
 	bool tracking;
@@ -97,6 +98,8 @@ public:
 		phranges[2] = vranges; 
 		hsize[0] = 20; hsize[1] = 28; hsize[2] = 28;
 		
+		ellipse2Poly(Point(0,0), Size(10,10),0,0,360,6,circlepts);
+		
 #ifdef _PC_COMPILE
 		histimg = Mat::zeros(200, 320, CV_8UC3);
 #endif		
@@ -119,6 +122,8 @@ public:
 		}
 		kalman_setup = true;
 	}		
+	
+	vector<int> GetPointsUsingBlobs(vector<Point>& _points, Mat& img, Mat& hsv, bool get_all_blobs, int i_am, bool _debug);
 	
 	vector<int> findCharacter(Mat& img, int i_am, bool _flip, bool _debug);
 	

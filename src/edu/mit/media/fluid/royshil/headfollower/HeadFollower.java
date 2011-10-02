@@ -436,7 +436,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 					
 					float midx_self = (state[0]+state[2])/2;
 					float midx_other = (state[4]+state[6])/2;
-					if(midx_self > midx_other) { //other character to the left!
+					if(midx_self < midx_other) { //other character to the left!
 						if(mLookingToTheRight) {
 							toggleLooking();
 							mLookingToTheRight = false;
@@ -550,7 +550,7 @@ public class HeadFollower extends Activity implements android.view.View.OnClickL
 				InteractionBar close = (InteractionBar) findViewById(R.id.interactionbar2);
 				close.setMax(2.0f);
 				close.setValue((float)(state[3]));
-			}
+			}  
 		});
 	}
 
